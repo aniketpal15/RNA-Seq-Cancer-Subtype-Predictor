@@ -1,0 +1,10 @@
+pandas
+scikit-learn
+xgboost
+shap
+streamlit
+matplotlib
+ucimlrepo
+joblib
+pyarrow
+
