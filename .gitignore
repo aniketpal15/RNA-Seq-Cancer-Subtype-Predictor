@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Antigravity / AI workspace internals
+.agents/
+.claude/
+.gemini/
+
+# Temp / scratch files
+inspect_uploaded.py
+
+# OS
+.DS_Store
+Thumbs.db
+
