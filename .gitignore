@@ -29,6 +29,9 @@ env/
 # Temp / scratch files
 inspect_uploaded.py
 
+# Large local test datasets (>100MB exceeds GitHub limit)
+data.csv
+
 # OS
 .DS_Store
 Thumbs.db

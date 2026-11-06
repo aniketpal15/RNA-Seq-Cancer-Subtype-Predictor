@@ -84,8 +84,8 @@ header {
     --text-pure:       #FFFFFF;
     --text-main:       #E2E8F0;
     --text-muted:      #7A7D93;
-    --radius-main:     22px;
-    --radius-sm:       12px;
+    --radius-main:     15px;
+    --radius-sm:       10px;
 }
 
 html, body, [class*="css"] {
@@ -93,6 +93,12 @@ html, body, [class*="css"] {
     -webkit-font-smoothing: antialiased !important;
     background-color: var(--bg-canvas) !important;
     color: var(--text-main) !important;
+}
+
+html, body, .main, [data-testid="stAppViewContainer"], [data-testid="stAppViewBlockContainer"] {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
 }
 
 .main, .block-container, [data-testid="stAppViewContainer"] {
@@ -525,6 +531,23 @@ div.stButton > button:not([kind="primary"]):hover {
 
 
 
+/* Sub-Navbar Hero Typography */
+.hero-title {
+    font-size: clamp(1.3rem, 3.2vw, 1.7rem);
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    color: #FFFFFF;
+    margin-bottom: 0.2rem;
+    line-height: 1.25;
+}
+
+.hero-sub {
+    font-size: clamp(0.78rem, 1.6vw, 0.88rem);
+    color: #8B8FA3;
+    line-height: 1.45;
+    max-width: 850px;
+}
+
 /* Dataframe and Expander styling */
 div[data-testid="stDataFrame"] {
     border-radius: 14px !important;
@@ -540,6 +563,206 @@ div[data-testid="stExpander"] {
     border: 1px solid var(--border-card) !important;
     border-radius: var(--radius-main) !important;
     overflow: hidden !important;
+}
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE DESIGN BREAKPOINTS (All Devices)
+   ═══════════════════════════════════════════════════ */
+
+/* Global Dataframe & Image containment */
+div[data-testid="stDataFrame"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+div[data-testid="stDataFrame"] * {
+    max-width: 100% !important;
+}
+
+div[data-testid="stImage"] img {
+    max-width: 100% !important;
+    height: auto !important;
+}
+
+/* 1. Large Monitors (> 1440px) */
+@media (min-width: 1441px) {
+    .main .block-container {
+        max-width: 1440px !important;
+        margin: 0 auto !important;
+        padding-left: 2.5rem !important;
+        padding-right: 2.5rem !important;
+    }
+}
+
+/* 2. Tablets & Small Laptops (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .main .block-container {
+        padding-left: 1.25rem !important;
+        padding-right: 1.25rem !important;
+    }
+
+    .in-stat-card {
+        padding: 1.1rem 1.2rem !important;
+    }
+
+    .in-stat-value {
+        font-size: 1.85rem !important;
+    }
+
+    /* Stack mid-section charts cleanly */
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stImage"]) {
+        flex-direction: column !important;
+        gap: 1rem !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stImage"]) > div[data-testid="stColumn"] {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+}
+
+/* 3. Tablets & Mobile Screens (max-width: 900px) */
+@media (max-width: 900px) {
+    .main .block-container,
+    [data-testid="stAppViewBlockContainer"] {
+        padding-left: 0.65rem !important;
+        padding-right: 0.65rem !important;
+        padding-top: 0.15rem !important;
+        padding-bottom: 2rem !important;
+    }
+
+    /* Responsive Top Navbar */
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFileUploader"]) {
+        height: auto !important;
+        min-height: unset !important;
+        max-height: unset !important;
+        flex-direction: column !important;
+        padding: 0.9rem 1rem !important;
+        gap: 0.75rem !important;
+        border-radius: 16px !important;
+        align-items: stretch !important;
+        overflow: visible !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFileUploader"]) > div[data-testid="stColumn"] {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+        justify-content: center !important;
+        display: flex !important;
+    }
+
+    .nav-brand-title {
+        font-size: 1.25rem !important;
+        justify-content: center !important;
+        width: 100% !important;
+        text-align: center !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFileUploader"]) div[data-testid="stFileUploader"] {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFileUploader"]) section[data-testid="stFileUploaderDropzone"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        justify-content: center !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFileUploader"]) div[data-testid="stHorizontalBlock"] {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 0.6rem !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFileUploader"]) div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+        width: auto !important;
+        min-width: unset !important;
+        flex: 1 1 auto !important;
+    }
+
+    /* Hero Sub-Navbar stacking */
+    div[data-testid="stHorizontalBlock"]:has(.hero-title) {
+        flex-direction: column !important;
+        gap: 0.8rem !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(.hero-title) > div[data-testid="stColumn"] {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+
+    /* Stat cards */
+    div[data-testid="stHorizontalBlock"]:has(.in-stat-card) {
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(.in-stat-card) > div[data-testid="stColumn"] {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+
+    .in-stat-card {
+        padding: 1.1rem 1.25rem !important;
+        min-height: auto !important;
+    }
+
+    .in-stat-value {
+        font-size: 1.85rem !important;
+    }
+
+    /* Mid-section columns */
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stImage"]) {
+        flex-direction: column !important;
+        gap: 0.9rem !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stImage"]) > div[data-testid="stColumn"] {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+
+    /* Primary CTA button full width and accessible tap size */
+    div.stButton > button[kind="primary"] {
+        width: 100% !important;
+        min-height: 48px !important;
+        font-size: 1rem !important;
+    }
+
+    /* SHAP Beeswarm container on mobile */
+    div[data-testid="stVerticalBlock"]:has(div[data-testid="stImage"]):not([data-testid="stHorizontalBlock"] *) {
+        padding: 1.1rem 1.2rem !important;
+        border-radius: 16px !important;
+    }
+}
+
+/* 4. Ultra-Small Phones (max-width: 420px) */
+@media (max-width: 420px) {
+    .main .block-container {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+
+    .in-stat-value {
+        font-size: 1.65rem !important;
+    }
+
+    .in-badge-pill {
+        font-size: 0.68rem !important;
+        padding: 0.15rem 0.45rem !important;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -605,7 +828,7 @@ with nav_mid:
 with nav_right:
     col_status, col_demo_btn = st.columns([1.5, 1], vertical_alignment="center")
     with col_demo_btn:
-        load_demo = st.button("🧪 Demo Sample", help="Load pre-saved benchmark patient data")
+        load_demo = st.button("Demo Sample", help="Load pre-saved benchmark patient data")
 
     with col_status:
         if uploaded_file is not None:
@@ -656,10 +879,10 @@ sub_left, sub_right = st.columns([2.6, 1])
 with sub_left:
     st.markdown("""
     <div>
-        <div style="font-size:1.65rem;font-weight:900;letter-spacing:-0.03em;color:#FFFFFF;margin-bottom:0.15rem;">
+        <div class="hero-title">
             RNA-Seq Cancer Subtype Predictor
         </div>
-        <div style="font-size:0.88rem;color:#8B8FA3;line-height:1.45;max-width:850px;">
+        <div class="hero-sub">
             Multi-class histological classification via high-throughput Illumina HiSeq transcriptomics.
             Powered by gradient-boosted tree ensembles and game-theoretic SHAP explainability.
         </div>
