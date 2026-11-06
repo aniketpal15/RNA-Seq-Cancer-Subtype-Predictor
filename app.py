@@ -621,7 +621,7 @@ with nav_right:
                 st.error(f"Error parsing file: {e}")
         elif load_demo:
             current_cycle = st.session_state.get("demo_cycle_idx", 0)
-            next_cycle = (current_cycle % 5) + 1
+            next_cycle = (current_cycle % 20) + 1
             filename = f"sample_data_{next_cycle}.csv"
             demo, demo_err = load_demo_csv(filename)
             if not demo_err:

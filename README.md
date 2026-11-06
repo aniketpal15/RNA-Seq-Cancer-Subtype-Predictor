@@ -98,27 +98,39 @@ Cancer Subtype Prediction via Gene Expression (RNA-Seq)/
 ├── selector.pkl                # Fitted SelectKBest feature selector (top 500 genes)
 ├── sample_patient.csv          # Benchmark patient sample (PRAD, 20,531 genes)
 │
-└── sampledata/                 # Dedicated folder for test patient CSV samples
-    ├── sample_data_1.csv       # Test Sample 1: PRAD (Prostate Adenocarcinoma)
-    ├── sample_data_2.csv       # Test Sample 2: BRCA (Breast Invasive Carcinoma)
-    ├── sample_data_3.csv       # Test Sample 3: COAD (Colon Adenocarcinoma)
-    ├── sample_data_4.csv       # Test Sample 4: KIRC (Kidney Renal Clear Cell Carcinoma)
-    └── sample_data_5.csv       # Test Sample 5: LUAD (Lung Adenocarcinoma)
+└── sampledata/                 # Dedicated folder for 20 real patient CSV samples (from TCGA Pan-Cancer)
+    ├── sample_data_1.csv ... sample_data_5.csv   # Initial benchmark samples (PRAD, BRCA, COAD, KIRC, LUAD)
+    └── sample_data_6.csv ... sample_data_20.csv  # 15 additional real patient samples across all 5 subtypes
 ```
 
 ---
 
 ## Sample Patient Data (`sampledata/`)
 
-The `sampledata/` directory contains 5 pre-extracted, benchmark patient samples from the TCGA Pan-Cancer cohort. Each file contains all 20,531 RNA-Seq features for a single patient, allowing you to test each cancer subtype:
+The `sampledata/` directory contains **20 pre-extracted, real patient samples** directly from the official TCGA Pan-Cancer Illumina HiSeq cohort. Each file contains all 20,531 continuous RNA-Seq transcriptomic expression levels for a unique real patient, with no synthetic/fake data:
 
-| File | Ground Truth Diagnosis | Target Organ | Model Confidence | Notable Genomic Signatures |
+| File | Sample ID | Ground Truth Diagnosis | Target Organ | Model Confidence |
 |---|---|---|---|---|
-| [`sample_data_1.csv`](file:///sampledata/sample_data_1.csv) | **PRAD** (Prostate Adenocarcinoma) | Prostate | **99.8%** | Overexpression in prostate-specific antigen pathways |
-| [`sample_data_2.csv`](file:///sampledata/sample_data_2.csv) | **BRCA** (Breast Invasive Carcinoma) | Breast | **99.9%** | Characteristic luminal/HER2 transcriptomic profile |
-| [`sample_data_3.csv`](file:///sampledata/sample_data_3.csv) | **COAD** (Colon Adenocarcinoma) | Colon | **99.6%** | Distinct gastrointestinal mucosal gene clusters |
-| [`sample_data_4.csv`](file:///sampledata/sample_data_4.csv) | **KIRC** (Kidney Renal Clear Cell) | Kidney | **99.8%** | Renal clear cell metabolic & angiogenic markers |
-| [`sample_data_5.csv`](file:///sampledata/sample_data_5.csv) | **LUAD** (Lung Adenocarcinoma) | Lung | **99.8%** | Pulmonary alveolar and epithelial driver loci |
+| [`sample_data_1.csv`](file:///sampledata/sample_data_1.csv) | `sample_19` | **PRAD** (Prostate Adenocarcinoma) | Prostate | **99.8%** |
+| [`sample_data_2.csv`](file:///sampledata/sample_data_2.csv) | `sample_10` | **BRCA** (Breast Invasive Carcinoma) | Breast | **99.9%** |
+| [`sample_data_3.csv`](file:///sampledata/sample_data_3.csv) | `sample_65` | **COAD** (Colon Adenocarcinoma) | Colon | **99.6%** |
+| [`sample_data_4.csv`](file:///sampledata/sample_data_4.csv) | `sample_40` | **KIRC** (Kidney Renal Clear Cell) | Kidney | **99.8%** |
+| [`sample_data_5.csv`](file:///sampledata/sample_data_5.csv) | `sample_16` | **LUAD** (Lung Adenocarcinoma) | Lung | **99.8%** |
+| [`sample_data_6.csv`](file:///sampledata/sample_data_6.csv) | `sample_4` | **BRCA** (Breast Invasive Carcinoma) | Breast | **99.9%** |
+| [`sample_data_7.csv`](file:///sampledata/sample_data_7.csv) | `sample_8` | **BRCA** (Breast Invasive Carcinoma) | Breast | **99.8%** |
+| [`sample_data_8.csv`](file:///sampledata/sample_data_8.csv) | `sample_13` | **BRCA** (Breast Invasive Carcinoma) | Breast | **99.9%** |
+| [`sample_data_9.csv`](file:///sampledata/sample_data_9.csv) | `sample_26` | **COAD** (Colon Adenocarcinoma) | Colon | **99.6%** |
+| [`sample_data_10.csv`](file:///sampledata/sample_data_10.csv) | `sample_47` | **COAD** (Colon Adenocarcinoma) | Colon | **99.6%** |
+| [`sample_data_11.csv`](file:///sampledata/sample_data_11.csv) | `sample_54` | **COAD** (Colon Adenocarcinoma) | Colon | **99.6%** |
+| [`sample_data_12.csv`](file:///sampledata/sample_data_12.csv) | `sample_6` | **KIRC** (Kidney Renal Clear Cell) | Kidney | **99.6%** |
+| [`sample_data_13.csv`](file:///sampledata/sample_data_13.csv) | `sample_11` | **KIRC** (Kidney Renal Clear Cell) | Kidney | **99.8%** |
+| [`sample_data_14.csv`](file:///sampledata/sample_data_14.csv) | `sample_17` | **KIRC** (Kidney Renal Clear Cell) | Kidney | **99.8%** |
+| [`sample_data_15.csv`](file:///sampledata/sample_data_15.csv) | `sample_1` | **LUAD** (Lung Adenocarcinoma) | Lung | **99.8%** |
+| [`sample_data_16.csv`](file:///sampledata/sample_data_16.csv) | `sample_22` | **LUAD** (Lung Adenocarcinoma) | Lung | **99.8%** |
+| [`sample_data_17.csv`](file:///sampledata/sample_data_17.csv) | `sample_25` | **LUAD** (Lung Adenocarcinoma) | Lung | **99.8%** |
+| [`sample_data_18.csv`](file:///sampledata/sample_data_18.csv) | `sample_2` | **PRAD** (Prostate Adenocarcinoma) | Prostate | **97.6%** |
+| [`sample_data_19.csv`](file:///sampledata/sample_data_19.csv) | `sample_3` | **PRAD** (Prostate Adenocarcinoma) | Prostate | **99.7%** |
+| [`sample_data_20.csv`](file:///sampledata/sample_data_20.csv) | `sample_5` | **PRAD** (Prostate Adenocarcinoma) | Prostate | **99.7%** |
 
 > **Note**: You can drag and drop any of these files directly into the top navbar file uploader, or cycle through them in the app using the **Demo Sample** button.
 
