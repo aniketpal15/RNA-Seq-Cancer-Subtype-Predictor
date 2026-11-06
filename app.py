@@ -529,7 +529,23 @@ div.stButton > button:not([kind="primary"]):hover {
     transform: translateY(-1px) !important;
 }
 
-
+/* Search Bar & Text Input Styling */
+div[data-testid="stTextInput"] {
+    margin-bottom: 0 !important;
+}
+div[data-testid="stTextInput"] input {
+    background-color: #12131A !important;
+    border: 1px solid var(--border-card) !important;
+    border-radius: 12px !important;
+    color: #FFFFFF !important;
+    font-size: 0.88rem !important;
+    padding: 0.55rem 1rem !important;
+    transition: all 0.2s ease !important;
+}
+div[data-testid="stTextInput"] input:focus {
+    border-color: #8B5CF6 !important;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25) !important;
+}
 
 /* Sub-Navbar Hero Typography */
 .hero-title {
@@ -781,20 +797,358 @@ def load_artifacts():
         return None, None, None, str(exc)
 
 @st.cache_data(show_spinner=False)
-def load_demo_csv(filename="sample_data_1.csv"):
+def load_demo_csv(filename="sample_multi_patient.csv"):
     candidates = [
         filename,
         os.path.join("sampledata", filename),
-        os.path.join("sampledata", os.path.basename(filename)),
-        "sample_patient.csv"
+        os.path.join("sampledata", "sample_multi_patient.csv"),
+        "sample_multi_patient.csv",
+        "sample_data_1.csv",
+        os.path.join("sampledata", "sample_data_1.csv"),
     ]
     target = next((p for p in candidates if os.path.exists(p)), None)
     if not target:
-        return None, f"`{filename}` not found — run `python train_model.py`."
+        return None, f"`{filename}` not found."
     try:
         return pd.read_csv(target), None
     except Exception as exc:
         return None, str(exc)
+
+def parse_uploaded_dataset(df_raw: pd.DataFrame):
+    """
+    Parses uploaded CSV with support for 1 or more patient rows.
+    Extracts optional 'Patient ID' and 'Patient Name' columns in front.
+    Defaults to 'No ID' and 'No Name' if missing, null, or empty.
+    Extracts clean numeric gene features (20531 or 500 columns).
+    """
+    cols = list(df_raw.columns)
+    id_col = None
+    for c in cols:
+        c_norm = str(c).strip().lower().replace("_", " ").replace("-", " ")
+        if c_norm in {"patient id", "patientid", "id", "pid", "patient number", "patient no"}:
+            id_col = c
+            break
+
+    name_col = None
+    for c in cols:
+        c_norm = str(c).strip().lower().replace("_", " ").replace("-", " ")
+        if c_norm in {"patient name", "patientname", "name", "full name", "patient"}:
+            name_col = c
+            break
+
+    n_rows = len(df_raw)
+    records = []
+    for i in range(n_rows):
+        row = df_raw.iloc[i]
+        p_id = str(row[id_col]).strip() if id_col and pd.notna(row[id_col]) and str(row[id_col]).strip() != "" else "No ID"
+        p_name = str(row[name_col]).strip() if name_col and pd.notna(row[name_col]) and str(row[name_col]).strip() != "" else "No Name"
+        records.append({"index": i, "id": p_id, "name": p_name})
+
+    cols_to_drop = set()
+    if id_col is not None:
+        cols_to_drop.add(id_col)
+    if name_col is not None:
+        cols_to_drop.add(name_col)
+    for c in cols:
+        c_norm = str(c).strip().lower()
+        if c_norm in {"unnamed: 0", "sample_id", "sample id", "class", "cancer_type", "cancer type"}:
+            cols_to_drop.add(c)
+
+    features_df = df_raw.drop(columns=list(cols_to_drop)).copy()
+    features_df = features_df.apply(pd.to_numeric, errors="coerce").fillna(0.0)
+    return records, features_df
+
+def compute_patient_inference(patient_idx: int, features_df: pd.DataFrame, model, encoder, selector):
+    """
+    Computes and caches model inference and SHAP attributions for a single patient index.
+    """
+    cache = st.session_state.setdefault("patient_results_cache", {})
+    if patient_idx in cache:
+        return cache[patient_idx]
+
+    row_df = features_df.iloc[[patient_idx]]
+    n_expected = selector.n_features_in_
+    if row_df.shape[1] == n_expected:
+        X_sel = selector.transform(row_df)
+        feat_names = row_df.columns[selector.get_support()].tolist()
+    elif row_df.shape[1] == 500:
+        X_sel = row_df.values
+        feat_names = row_df.columns.tolist()
+    else:
+        raise ValueError(f"Feature count mismatch: expected {n_expected} or 500 genes, got {row_df.shape[1]}")
+
+    X_df = pd.DataFrame(X_sel, columns=feat_names)
+
+    pred_idx = int(model.predict(X_sel)[0])
+    pred_code = encoder.inverse_transform([pred_idx])[0]
+    meta = SUBTYPE_META.get(pred_code, {"full": "Unknown", "organ": "?", "hex": "#8B5CF6", "badge": "🟣"})
+    proba = model.predict_proba(X_sel)[0] if hasattr(model, "predict_proba") else None
+    confidence = float(proba[pred_idx]) * 100 if proba is not None else 99.0
+
+    # SHAP
+    explainer = shap.TreeExplainer(model)
+    shap_expl = explainer(X_df)
+    if hasattr(shap_expl, "shape") and len(shap_expl.shape) == 3:
+        class_expl = shap_expl[:, :, pred_idx]
+        shap_values = class_expl.values[0]
+    elif isinstance(shap_expl, list):
+        class_expl = shap_expl[pred_idx]
+        shap_values = class_expl[0]
+    else:
+        class_expl = shap_expl
+        shap_values = class_expl.values[0]
+
+    res = dict(
+        pred_code=pred_code,
+        pred_idx=pred_idx,
+        meta=meta,
+        confidence=confidence,
+        proba=proba,
+        X_df=X_df,
+        feat_names=feat_names,
+        X_sel=X_sel,
+        class_expl=class_expl,
+        shap_values=shap_values,
+    )
+    cache[patient_idx] = res
+    return res
+
+def get_standby_result():
+    return dict(
+        pred_code="STANDBY",
+        pred_idx=-1,
+        meta={"full": "Awaiting patient inference", "organ": "—", "hex": "#7A7D93"},
+        confidence=0.0,
+        proba=[0.0] * 5,
+        feat_names=[],
+        X_sel=np.zeros((1, 500)),
+        class_expl=None,
+        shap_values=None,
+    )
+
+def render_patient_view(patient_info, result, is_analyzed, total_patients, encoder):
+    """
+    Renders the complete SaaS diagnostic dashboard for a given patient.
+    """
+    # 1. Patient Header Banner Card
+    badge_style = "badge-green" if is_analyzed else "badge-purple"
+    status_label = "● Analyzed" if is_analyzed else "● Standby"
+
+    st.markdown(f"""
+    <div style="background:#12131A;border:1px solid #212230;border-left:4px solid #8B5CF6;border-radius:14px;padding:0.75rem 1.25rem;margin-top:0.4rem;margin-bottom:1.1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+        <div style="display:flex;align-items:center;gap:0.85rem;">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(139,92,246,0.18);border:1px solid rgba(139,92,246,0.3);display:flex;align-items:center;justify-content:center;font-size:1.15rem;color:#C084FC;">
+                👤
+            </div>
+            <div>
+                <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+                    <span style="font-size:1.05rem;font-weight:800;color:#FFFFFF;">{patient_info['name']}</span>
+                    <span style="background:rgba(139,92,246,0.15);color:#C084FC;font-size:0.75rem;font-weight:700;padding:0.18rem 0.55rem;border-radius:9999px;border:1px solid rgba(139,92,246,0.3);font-family:monospace;">
+                        ID: {patient_info['id']}
+                    </span>
+                </div>
+                <div style="font-size:0.75rem;color:#8B8FA3;margin-top:0.15rem;">
+                    Patient #{patient_info['index']+1} of {total_patients} &middot; Illumina HiSeq RNA-Seq Transcriptome
+                </div>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+            <span class="in-badge-pill {badge_style}">{status_label}</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 2. 3 Top Stat Cards
+    conf_val = f"{result['confidence']:.1f}%" if is_analyzed else "0.0%"
+    pred_sub = result['pred_code'] if is_analyzed else "STANDBY"
+    biomarker_cnt = "500" if is_analyzed else "0"
+    meta_data = result['meta'] if is_analyzed else {"full": "Awaiting patient inference", "organ": "—", "hex": "#7A7D93"}
+
+    s1, s2, s3 = st.columns(3)
+    with s1:
+        st.markdown(f"""
+        <div class="in-stat-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+                <div style="font-size:0.8rem;font-weight:700;color:#8B8FA3;display:flex;align-items:center;gap:0.4rem;">
+                    Biomarkers Analyzed
+                </div>
+                <span class="in-badge-pill badge-purple">Top K=500</span>
+            </div>
+            <div class="in-stat-value">{biomarker_cnt}</div>
+            <div style="font-size:0.75rem;color:#71758B;margin-top:0.4rem;">97.6% Transcriptome reduction</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with s2:
+        badge_style_sub = "badge-green" if is_analyzed else "badge-purple"
+        delta_text = meta_data['organ'] if is_analyzed else "0%"
+        st.markdown(f"""
+        <div class="in-stat-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+                <div style="font-size:0.8rem;font-weight:700;color:#8B8FA3;display:flex;align-items:center;gap:0.4rem;">
+                    Predicted Subtype
+                </div>
+                <span class="in-badge-pill {badge_style_sub}">{delta_text}</span>
+            </div>
+            <div class="in-stat-value" style="color:{meta_data['hex']};">{pred_sub}</div>
+            <div style="font-size:0.75rem;color:#71758B;margin-top:0.4rem;">{meta_data['full']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with s3:
+        conf_badge = "badge-green" if (is_analyzed and result['confidence'] > 90) else "badge-purple"
+        conf_sub = "High Diagnostic Certainty" if is_analyzed else "Engine awaiting run trigger"
+        st.markdown(f"""
+        <div class="in-stat-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+                <div style="font-size:0.8rem;font-weight:700;color:#8B8FA3;display:flex;align-items:center;gap:0.4rem;">
+                    Model Confidence
+                </div>
+                <span class="in-badge-pill {conf_badge}">Posterior</span>
+            </div>
+            <div class="in-stat-value">{conf_val}</div>
+            <div style="font-size:0.75rem;color:#71758B;margin-top:0.4rem;">{conf_sub}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+
+    # 3. Middle Section: Waveform + Heatmap Matrix
+    mid_left, mid_right = st.columns([1.8, 1.2])
+
+    with mid_left:
+        fig_wave, ax_wave = plt.subplots(figsize=(7.5, 3.1), dpi=140)
+        fig_wave.patch.set_facecolor('#12131A')
+        ax_wave.set_facecolor('#12131A')
+
+        x_points = np.linspace(1, 30, 200)
+        if is_analyzed and result['X_sel'] is not None:
+            sample_vals = result['X_sel'][0][:30]
+            y_wave = np.interp(x_points, np.arange(1, len(sample_vals) + 1), sample_vals)
+        else:
+            y_wave = np.zeros_like(x_points)
+
+        ax_wave.plot(x_points, y_wave, color='#8B5CF6', linewidth=2.4)
+        ax_wave.fill_between(x_points, y_wave, color='#8B5CF6', alpha=0.18)
+        ax_wave.plot(x_points, y_wave * 0.45, color='#A78BFA', linewidth=1.2, linestyle='--', alpha=0.5)
+        ax_wave.set_xlim(1, 30)
+        ax_wave.tick_params(colors='#65687C', labelsize=8)
+        for spine in ax_wave.spines.values():
+            spine.set_color('#212230')
+        ax_wave.grid(True, color='#1E202C', linestyle='-', linewidth=0.5, alpha=0.7)
+        plt.tight_layout()
+
+        st.markdown("""
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">
+            <div>
+                <div class="in-card-title">Biomarker Expression Loci Waveform</div>
+                <div class="in-card-sub">Top 30 discriminant expression peaks across the transcriptome</div>
+            </div>
+            <span class="in-badge-pill badge-purple">Illumina HiSeq</span>
+        </div>
+        """, unsafe_allow_html=True)
+        st.pyplot(fig_wave, use_container_width=True)
+        plt.close(fig_wave)
+
+    with mid_right:
+        st.markdown("""
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+            <div>
+                <div class="in-card-title">Pan-Cancer Subtype Heatmap Matrix</div>
+                <div class="in-card-sub">Clinical Roadmap &middot; COAD &middot; KIRC &middot; LUAD &middot; PRAD &middot; BRCA</div>
+            </div>
+            <span class="in-badge-pill badge-green">TCGA 401</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        probs = result['proba'] if is_analyzed and result['proba'] is not None else [0.0]*5
+        classes = encoder.classes_ if encoder else ["BRCA", "COAD", "KIRC", "LUAD", "PRAD"]
+        for idx, code in enumerate(classes):
+            m = SUBTYPE_META.get(code, {"hex": "#8B5CF6", "organ": "Pan-Cancer", "badge": ""})
+            pct = float(probs[idx]) * 100 if is_analyzed and idx < len(probs) else 0.0
+            is_top = is_analyzed and code == result['pred_code']
+            border_color = m['hex'] if is_top else "#1E202D"
+            bg_color = "rgba(139,92,246,0.12)" if is_top else "#171822"
+            badge_html = m['badge']
+            bar_width = f"{pct:.1f}"
+            hex_color = m['hex']
+            organ = m['organ']
+            pct_str = f"{pct:.1f}%"
+
+            st.markdown(
+                f'<div style="display:flex;align-items:center;justify-content:space-between;'
+                f'padding:0.42rem 0.75rem;margin-bottom:0.35rem;border-radius:10px;'
+                f'background:{bg_color};border:1px solid {border_color};">'
+                f'<div style="display:flex;align-items:center;gap:0.6rem;">'
+                f'<span style="font-size:0.9rem;">{badge_html}</span>'
+                f'<div>'
+                f'<span style="font-size:0.82rem;font-weight:700;color:#FFFFFF;">{code}</span>'
+                f'<span style="font-size:0.72rem;color:#71758B;margin-left:0.35rem;">{organ}</span>'
+                f'</div></div>'
+                f'<div style="display:flex;align-items:center;gap:0.75rem;">'
+                f'<div style="width:75px;height:6px;background:#232534;border-radius:9999px;overflow:hidden;">'
+                f'<div style="width:{bar_width}%;background:{hex_color};height:100%;border-radius:9999px;"></div>'
+                f'</div>'
+                f'<span style="font-size:0.8rem;font-weight:800;color:#FFFFFF;min-width:38px;text-align:right;">{pct_str}</span>'
+                f'</div></div>',
+                unsafe_allow_html=True
+            )
+
+    # 4. SHAP Interpretability Section (if analyzed)
+    if is_analyzed and result['class_expl'] is not None:
+        with st.container(border=True):
+            st.markdown("""
+            <div style="font-size:1.15rem;font-weight:800;color:#FFFFFF;margin-bottom:0.3rem;">
+                Model Interpretability · SHAP Beeswarm Plot
+            </div>
+            <div style="font-size:0.83rem;color:#8B8FA3;margin-bottom:1.2rem;">
+                Game-theoretic Shapley attributions explaining individual biomarker impact on the diagnosed cancer subtype.
+            </div>
+            """, unsafe_allow_html=True)
+
+            try:
+                plt.rcParams.update({
+                    "figure.facecolor":  "#12131A",
+                    "axes.facecolor":    "#12131A",
+                    "axes.edgecolor":    "#212230",
+                    "axes.labelcolor":   "#8B8FA3",
+                    "xtick.color":       "#65687C",
+                    "ytick.color":       "#8B8FA3",
+                    "text.color":        "#FFFFFF",
+                    "grid.color":        "#1A1B26",
+                    "grid.linewidth":    0.6,
+                })
+
+                fig_shap, ax_shap = plt.subplots(figsize=(9, 2.8), dpi=140)
+                shap.plots.beeswarm(result['class_expl'], max_display=6, show=False)
+                plt.title(f"Genomic Drivers Impacting {result['pred_code']} Classification for {patient_info['name']} ({patient_info['id']})", fontsize=10, fontweight="bold", pad=8, color="#FFFFFF")
+                plt.xlabel("SHAP Attribution Value", fontsize=8, color="#8B8FA3")
+                plt.tight_layout()
+                st.pyplot(fig_shap, use_container_width=True)
+                plt.close(fig_shap)
+                plt.rcParams.update(plt.rcParamsDefault)
+            except Exception as exc:
+                st.warning(f"Could not render SHAP beeswarm: {exc}")
+
+            driver_df = (
+                pd.DataFrame({
+                    "Genetic Biomarker": result['feat_names'],
+                    "Patient Expression Level": result['X_sel'][0],
+                    "SHAP Attribution Value": result['shap_values'],
+                })
+                .sort_values("SHAP Attribution Value", ascending=False)
+                .head(5)
+            )
+
+            st.markdown("<div style='font-size:0.92rem;font-weight:800;color:#FFFFFF;margin-top:1.1rem;margin-bottom:0.5rem;'>Top 5 Positive Genomic Driver Genes</div>", unsafe_allow_html=True)
+            st.dataframe(
+                driver_df.style.format({
+                    "Patient Expression Level": "{:.4f}",
+                    "SHAP Attribution Value": "{:+.5f}",
+                }),
+                use_container_width=True,
+                hide_index=True,
+            )
 
 model, encoder, selector, art_err = load_artifacts()
 
@@ -814,52 +1168,61 @@ with nav_left:
     </div>
     """, unsafe_allow_html=True)
 
-patient_df: pd.DataFrame | None = st.session_state.get("patient_df", None)
-patient_source: str = st.session_state.get("patient_source", "")
-
 with nav_mid:
     uploaded_file = st.file_uploader(
         "Upload RNA-Seq CSV",
         type=["csv"],
         label_visibility="collapsed",
-        help="Upload patient CSV containing 20,531 RNA-Seq features."
+        help="Upload patient CSV containing 1 or more patient rows with 20,531 RNA-Seq features."
     )
 
 with nav_right:
     col_status, col_demo_btn = st.columns([1.5, 1], vertical_alignment="center")
     with col_demo_btn:
-        load_demo = st.button("Demo Sample", help="Load pre-saved benchmark patient data")
+        load_demo = st.button("Demo Sample", help="Load pre-saved benchmark patient cohort")
 
     with col_status:
         if uploaded_file is not None:
-            try:
-                raw = pd.read_csv(uploaded_file)
-                drop_c = [c for c in raw.columns if c.lower() in {"sample_id","id","unnamed: 0","class","cancer_type"}]
-                patient_df = raw.drop(columns=drop_c).iloc[[0]].copy()
-                patient_source = f"File: {uploaded_file.name[:14]}..."
-                st.session_state["patient_df"] = patient_df
-                st.session_state["patient_source"] = patient_source
-                st.session_state.pop("results", None)
-            except Exception as e:
-                st.error(f"Error parsing file: {e}")
+            # Only re-parse when file actually changes (name + size fingerprint)
+            file_fingerprint = f"{uploaded_file.name}::{uploaded_file.size}"
+            if st.session_state.get("loaded_file_fingerprint") != file_fingerprint:
+                try:
+                    raw = pd.read_csv(uploaded_file)
+                    records, features_df = parse_uploaded_dataset(raw)
+                    patient_source = f"File: {uploaded_file.name[:14]}... ({len(records)} Patients)"
+                    st.session_state["patient_records"] = records
+                    st.session_state["features_df"] = features_df
+                    st.session_state["patient_source"] = patient_source
+                    st.session_state["is_analyzed"] = False
+                    st.session_state["patient_results_cache"] = {}
+                    st.session_state["search_query"] = ""
+                    st.session_state["loaded_file_fingerprint"] = file_fingerprint
+                except Exception as e:
+                    st.error(f"Error parsing file: {e}")
         elif load_demo:
             current_cycle = st.session_state.get("demo_cycle_idx", 0)
             next_cycle = (current_cycle % 20) + 1
             filename = f"sample_data_{next_cycle}.csv"
             demo, demo_err = load_demo_csv(filename)
             if not demo_err:
-                patient_df = demo
-                patient_source = f"Demo #{next_cycle}: {filename}"
-                st.session_state["patient_df"] = patient_df
+                records, features_df = parse_uploaded_dataset(demo)
+                patient_source = f"Demo #{next_cycle} ({len(records)} Patients)"
+                st.session_state["patient_records"] = records
+                st.session_state["features_df"] = features_df
                 st.session_state["patient_source"] = patient_source
                 st.session_state["demo_cycle_idx"] = next_cycle
-                st.session_state.pop("results", None)
+                st.session_state["is_analyzed"] = False
+                st.session_state["patient_results_cache"] = {}
+                st.session_state["search_query"] = ""
 
-        if patient_df is not None:
+        loaded_records = st.session_state.get("patient_records", [])
+        patient_src_label = st.session_state.get("patient_source", "")
+
+        if loaded_records:
             st.markdown(f"""
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:0.5rem;">
                 <span class="in-badge-pill badge-green">✓ Ready</span>
-                <span style="font-size:0.75rem;color:#A78BFA;font-weight:600;">{patient_source}</span>
+                <span style="font-size:0.75rem;color:#A78BFA;font-weight:600;">{patient_src_label}</span>
             </div>
             """, unsafe_allow_html=True)
         else:
@@ -868,6 +1231,42 @@ with nav_right:
                 <span class="in-badge-pill badge-purple">● Standby (No File)</span>
             </div>
             """, unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1.5. SEARCH BAR (Directly Under Top Navbar)
+# ─────────────────────────────────────────────────────────────────────────────
+loaded_records = st.session_state.get("patient_records", [])
+features_df = st.session_state.get("features_df", None)
+is_analyzed = st.session_state.get("is_analyzed", False)
+
+if "search_query" not in st.session_state:
+    st.session_state["search_query"] = ""
+if "patient_search_input" not in st.session_state:
+    st.session_state["patient_search_input"] = ""
+
+def on_reset_search():
+    st.session_state["patient_search_input"] = ""
+    st.session_state["search_query"] = ""
+
+def on_search_submit():
+    st.session_state["search_query"] = st.session_state.get("patient_search_input", "").strip()
+
+sc_input, sc_btn, sc_reset = st.columns([5.2, 1.2, 1.2], vertical_alignment="center")
+
+with sc_input:
+    st.text_input(
+        "Search Patient",
+        placeholder="🔍 Search patient by Name (e.g., Sophia Martinez) or Patient ID (e.g., PID-TCGA-101)...",
+        label_visibility="collapsed",
+        key="patient_search_input",
+        on_change=on_search_submit
+    )
+
+with sc_btn:
+    st.button("Search", on_click=on_search_submit, use_container_width=True)
+
+with sc_reset:
+    st.button("Reset / First", on_click=on_reset_search, use_container_width=True, help="Clear search and display the first patient")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 2. SUB-NAVBAR HEADER AREA
@@ -893,267 +1292,100 @@ with sub_right:
     st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
     run_clicked = st.button("Initialize AI Analysis", type="primary", use_container_width=True)
 
-# Execute Inference on Button Click
 if run_clicked:
-    if patient_df is None:
+    if not loaded_records or features_df is None:
         st.warning("⚠️ Please upload a patient CSV or click 'Demo Sample' in the top navbar first!")
     elif art_err:
         st.error(f"Setup Required: {art_err}")
     else:
-        with st.spinner("Processing RNA-Seq features through SelectKBest & XGBoost..."):
-            n_expected = selector.n_features_in_
-            if patient_df.shape[1] == n_expected:
-                X_sel = selector.transform(patient_df)
-                feat_names = patient_df.columns[selector.get_support()].tolist()
-            elif patient_df.shape[1] == 500:
-                X_sel = patient_df.values
-                feat_names = patient_df.columns.tolist()
-            else:
-                st.error(f"Feature count mismatch: expected {n_expected} or 500 genes.")
-                st.stop()
-
-            X_df = pd.DataFrame(X_sel, columns=feat_names)
-
-            pred_idx = int(model.predict(X_sel)[0])
-            pred_code = encoder.inverse_transform([pred_idx])[0]
-            meta = SUBTYPE_META.get(pred_code, {"full": "Unknown", "organ": "?", "hex": "#8B5CF6", "badge": "🟣"})
-            proba = model.predict_proba(X_sel)[0] if hasattr(model, "predict_proba") else None
-            confidence = float(proba[pred_idx]) * 100 if proba is not None else 99.0
-
-            # SHAP
-            explainer = shap.TreeExplainer(model)
-            shap_expl = explainer(X_df)
-            if hasattr(shap_expl, "shape") and len(shap_expl.shape) == 3:
-                class_expl = shap_expl[:, :, pred_idx]
-                shap_values = class_expl.values[0]
-            elif isinstance(shap_expl, list):
-                class_expl = shap_expl[pred_idx]
-                shap_values = class_expl[0]
-            else:
-                class_expl = shap_expl
-                shap_values = class_expl.values[0]
-
-            st.session_state["results"] = dict(
-                pred_code=pred_code,
-                pred_idx=pred_idx,
-                meta=meta,
-                confidence=confidence,
-                proba=proba,
-                X_df=X_df,
-                feat_names=feat_names,
-                X_sel=X_sel,
-                class_expl=class_expl,
-                shap_values=shap_values,
-            )
-
-results = st.session_state.get("results", None)
-
-# Default Standby Values (0% initially)
-is_analyzed = results is not None
-conf_val = f"{results['confidence']:.1f}%" if is_analyzed else "0.0%"
-pred_sub = results['pred_code'] if is_analyzed else "STANDBY"
-biomarker_cnt = "500" if is_analyzed else "0"
-meta_data = results['meta'] if is_analyzed else {"full": "Awaiting patient inference", "organ": "—", "hex": "#7A7D93"}
+        # Run inference INLINE for first patient — no st.rerun() to avoid state race
+        with st.spinner("🔬 Analyzing Patient #1 · Applying SelectKBest → XGBoost → SHAP..."):
+            try:
+                compute_patient_inference(0, features_df, model, encoder, selector)
+                st.session_state["is_analyzed"] = True
+                is_analyzed = True          # update local variable immediately
+            except Exception as e:
+                st.session_state["is_analyzed"] = False
+                st.error(f"❌ Inference Error: {e}")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. TOP STAT CARDS (Matches the 3 metric cards in reference)
-# Total Features Analyzed | Top Prediction Subtype | Classification Confidence
+# 3. PATIENT SELECTION & SEARCH MATCHING
 # ─────────────────────────────────────────────────────────────────────────────
-s1, s2, s3 = st.columns(3)
+# Re-read is_analyzed in case it was updated inline above
+is_analyzed = st.session_state.get("is_analyzed", False)
+active_query = st.session_state.get("search_query", "").strip()
 
-with s1:
-    st.markdown(f"""
-    <div class="in-stat-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-            <div style="font-size:0.8rem;font-weight:700;color:#8B8FA3;display:flex;align-items:center;gap:0.4rem;">
-                Biomarkers Analyzed
-            </div>
-            <span class="in-badge-pill badge-purple">Top K=500</span>
-        </div>
-        <div class="in-stat-value">{biomarker_cnt}</div>
-        <div style="font-size:0.75rem;color:#71758B;margin-top:0.4rem;">97.6% Transcriptome reduction</div>
-    </div>
-    """, unsafe_allow_html=True)
+if not loaded_records or features_df is None:
+    # Standby state with placeholder patient
+    placeholder_patient = {"index": 0, "id": "No ID", "name": "No Name"}
+    standby_res = get_standby_result()
+    render_patient_view(placeholder_patient, standby_res, is_analyzed=False, total_patients=1, encoder=encoder)
+else:
+    total_loaded = len(loaded_records)
+    display_patients = []
+    match_notice = ""
 
-with s2:
-    badge_style = "badge-green" if is_analyzed else "badge-purple"
-    delta_text = meta_data['organ'] if is_analyzed else "0%"
-    st.markdown(f"""
-    <div class="in-stat-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-            <div style="font-size:0.8rem;font-weight:700;color:#8B8FA3;display:flex;align-items:center;gap:0.4rem;">
-                Predicted Subtype
-            </div>
-            <span class="in-badge-pill {badge_style}">{delta_text}</span>
-        </div>
-        <div class="in-stat-value" style="color:{meta_data['hex']};">{pred_sub}</div>
-        <div style="font-size:0.75rem;color:#71758B;margin-top:0.4rem;">{meta_data['full']}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with s3:
-    conf_badge = "badge-green" if (is_analyzed and results['confidence'] > 90) else "badge-purple"
-    conf_sub = "High Diagnostic Certainty" if is_analyzed else "Engine awaiting run trigger"
-    st.markdown(f"""
-    <div class="in-stat-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-            <div style="font-size:0.8rem;font-weight:700;color:#8B8FA3;display:flex;align-items:center;gap:0.4rem;">
-                Model Confidence
-            </div>
-            <span class="in-badge-pill {conf_badge}">Posterior</span>
-        </div>
-        <div class="in-stat-value">{conf_val}</div>
-        <div style="font-size:0.75rem;color:#71758B;margin-top:0.4rem;">{conf_sub}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 4. MIDDLE SECTION
-# Left (2 cols): Wave Chart (Active Users slot) + Subtype Heatmap Roadmap
-# ─────────────────────────────────────────────────────────────────────────────
-mid_left, mid_right = st.columns([1.8, 1.2])
-
-with mid_left:
-    # Build wave chart first, then render everything in one HTML block to avoid blank card artifacts
-    fig_wave, ax_wave = plt.subplots(figsize=(7.5, 3.1), dpi=140)
-    fig_wave.patch.set_facecolor('#12131A')
-    ax_wave.set_facecolor('#12131A')
-
-    x_points = np.linspace(1, 30, 200)
-    if is_analyzed:
-        sample_vals = results['X_sel'][0][:30]
-        y_wave = np.interp(x_points, np.arange(1, len(sample_vals) + 1), sample_vals)
+    if not active_query:
+        # Default view: First patient only
+        display_patients = [loaded_records[0]]
+        match_notice = f"Displaying First Patient (#1 of {total_loaded})"
     else:
-        y_wave = np.zeros_like(x_points)
+        q_lower = active_query.lower()
 
-    ax_wave.plot(x_points, y_wave, color='#8B5CF6', linewidth=2.4)
-    ax_wave.fill_between(x_points, y_wave, color='#8B5CF6', alpha=0.18)
-    ax_wave.plot(x_points, y_wave * 0.45, color='#A78BFA', linewidth=1.2, linestyle='--', alpha=0.5)
-    ax_wave.set_xlim(1, 30)
-    ax_wave.tick_params(colors='#65687C', labelsize=8)
-    for spine in ax_wave.spines.values():
-        spine.set_color('#212230')
-    ax_wave.grid(True, color='#1E202C', linestyle='-', linewidth=0.5, alpha=0.7)
-    plt.tight_layout()
+        # 1. Exact ID match (ID must be single and specific)
+        id_exact = [p for p in loaded_records if p['id'].strip().lower() == q_lower and p['id'].strip().lower() != "no id"]
+        if id_exact:
+            display_patients = [id_exact[0]]
+            match_notice = f"Specific Patient ID Matched: {id_exact[0]['id']}"
+        else:
+            # 2. Name match (case-insensitive) — if duplicate names, display both upside down together!
+            name_exact = [p for p in loaded_records if p['name'].strip().lower() == q_lower and p['name'].strip().lower() != "no name"]
+            if not name_exact:
+                name_exact = [p for p in loaded_records if q_lower in p['name'].strip().lower() and p['name'].strip().lower() != "no name"]
 
-    # Card header only (chart renders below, styled by CSS on the column container)
-    st.markdown("""
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">
-        <div>
-            <div class="in-card-title">Biomarker Expression Loci Waveform</div>
-            <div class="in-card-sub">Top 30 discriminant expression peaks across the transcriptome</div>
-        </div>
-        <span class="in-badge-pill badge-purple">Illumina HiSeq</span>
-    </div>
-    """, unsafe_allow_html=True)
-    st.pyplot(fig_wave, use_container_width=True)
-    plt.close(fig_wave)
+            if name_exact:
+                display_patients = name_exact
+                match_notice = f"Found {len(name_exact)} matching patient(s) for Name '{active_query}'"
+            else:
+                # 3. Substring ID match
+                id_sub = [p for p in loaded_records if q_lower in p['id'].strip().lower() and p['id'].strip().lower() != "no id"]
+                if id_sub:
+                    display_patients = [id_sub[0]]
+                    match_notice = f"Specific Patient ID Matched: {id_sub[0]['id']}"
+                else:
+                    st.warning(f"🔍 No patient found matching **'{active_query}'**. Displaying first patient as default.")
+                    display_patients = [loaded_records[0]]
+                    match_notice = f"Fallback: Displaying First Patient (#1 of {total_loaded})"
 
-with mid_right:
-    # Header as one self-contained block
-    st.markdown("""
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-        <div>
-            <div class="in-card-title">Pan-Cancer Subtype Heatmap Matrix</div>
-            <div class="in-card-sub">Clinical Roadmap &middot; COAD &middot; KIRC &middot; LUAD &middot; PRAD &middot; BRCA</div>
-        </div>
-        <span class="in-badge-pill badge-green">TCGA 401</span>
+    # Display match notice badge
+    st.markdown(f"""
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.6rem;">
+        <span class="in-badge-pill badge-purple">{match_notice}</span>
     </div>
     """, unsafe_allow_html=True)
 
-    # Each row rendered individually — avoids emoji-in-nested-f-string issues
-    probs = results['proba'] if is_analyzed else [0.0]*5
-    for idx, code in enumerate(encoder.classes_ if encoder else ["BRCA", "COAD", "KIRC", "LUAD", "PRAD"]):
-        m = SUBTYPE_META.get(code, {"hex": "#8B5CF6", "organ": "Pan-Cancer", "badge": ""})
-        pct = float(probs[idx]) * 100 if is_analyzed else 0.0
-        is_top = is_analyzed and code == results['pred_code']
-        border_color = m['hex'] if is_top else "#1E202D"
-        bg_color = "rgba(139,92,246,0.12)" if is_top else "#171822"
-        badge_html = m['badge']  # emoji safe as separate variable, not nested f-string
-        bar_width = f"{pct:.1f}"
-        hex_color = m['hex']
-        organ = m['organ']
-        pct_str = f"{pct:.1f}%"
+    # Render each matched patient (stacked vertically if multiple)
+    for idx, p in enumerate(display_patients):
+        if idx > 0:
+            st.markdown("<div style='height: 24px; border-top: 1px dashed #2B2C3E; margin: 2rem 0 1rem 0;'></div>", unsafe_allow_html=True)
 
-        st.markdown(
-            f'<div style="display:flex;align-items:center;justify-content:space-between;'
-            f'padding:0.42rem 0.75rem;margin-bottom:0.35rem;border-radius:10px;'
-            f'background:{bg_color};border:1px solid {border_color};">'
-            f'<div style="display:flex;align-items:center;gap:0.6rem;">'
-            f'<span style="font-size:0.9rem;">{badge_html}</span>'
-            f'<div>'
-            f'<span style="font-size:0.82rem;font-weight:700;color:#FFFFFF;">{code}</span>'
-            f'<span style="font-size:0.72rem;color:#71758B;margin-left:0.35rem;">{organ}</span>'
-            f'</div></div>'
-            f'<div style="display:flex;align-items:center;gap:0.75rem;">'
-            f'<div style="width:75px;height:6px;background:#232534;border-radius:9999px;overflow:hidden;">'
-            f'<div style="width:{bar_width}%;background:{hex_color};height:100%;border-radius:9999px;"></div>'
-            f'</div>'
-            f'<span style="font-size:0.8rem;font-weight:800;color:#FFFFFF;min-width:38px;text-align:right;">{pct_str}</span>'
-            f'</div></div>',
-            unsafe_allow_html=True
-        )
+        if is_analyzed:
+            patient_cache = st.session_state.get("patient_results_cache", {})
+            if p["index"] not in patient_cache:
+                # Not yet computed — show inline spinner and compute now
+                with st.spinner(f"🔬 Analyzing {p['name']} ({p['id']}) · Running RNA-Seq pipeline..."):
+                    try:
+                        res = compute_patient_inference(p["index"], features_df, model, encoder, selector)
+                    except Exception as e:
+                        st.error(f"❌ Inference Error for {p['name']}: {e}")
+                        res = get_standby_result()
+                        is_analyzed = False
+            else:
+                res = compute_patient_inference(p["index"], features_df, model, encoder, selector)
+        else:
+            res = get_standby_result()
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 6. SHAP DECISION BEESWARM EXPLAINABILITY & TOP 5 GENOMIC MARKERS
-# ─────────────────────────────────────────────────────────────────────────────
-if is_analyzed:
-    with st.container(border=True):
-        st.markdown("""
-        <div style="font-size:1.15rem;font-weight:800;color:#FFFFFF;margin-bottom:0.3rem;">
-            Model Interpretability · SHAP Beeswarm Plot
-        </div>
-        <div style="font-size:0.83rem;color:#8B8FA3;margin-bottom:1.2rem;">
-            Game-theoretic Shapley attributions explaining individual biomarker impact on the diagnosed cancer subtype.
-        </div>
-        """, unsafe_allow_html=True)
-
-        try:
-            plt.rcParams.update({
-                "figure.facecolor":  "#12131A",
-                "axes.facecolor":    "#12131A",
-                "axes.edgecolor":    "#212230",
-                "axes.labelcolor":   "#8B8FA3",
-                "xtick.color":       "#65687C",
-                "ytick.color":       "#8B8FA3",
-                "text.color":        "#FFFFFF",
-                "grid.color":        "#1A1B26",
-                "grid.linewidth":    0.6,
-            })
-
-            fig_shap, ax_shap = plt.subplots(figsize=(9, 2.8), dpi=140)
-            shap.plots.beeswarm(results['class_expl'], max_display=6, show=False)
-            plt.title(f"Genomic Drivers Impacting {results['pred_code']} Classification", fontsize=10, fontweight="bold", pad=8, color="#FFFFFF")
-            plt.xlabel("SHAP Attribution Value", fontsize=8, color="#8B8FA3")
-            plt.tight_layout()
-            st.pyplot(fig_shap, use_container_width=True)
-            plt.close(fig_shap)
-            plt.rcParams.update(plt.rcParamsDefault)
-        except Exception as exc:
-            st.warning(f"Could not render SHAP beeswarm: {exc}")
-
-        # Top 5 Driver Genes Table
-        driver_df = (
-            pd.DataFrame({
-                "Genetic Biomarker": results['feat_names'],
-                "Patient Expression Level": results['X_sel'][0],
-                "SHAP Attribution Value": results['shap_values'],
-            })
-            .sort_values("SHAP Attribution Value", ascending=False)
-            .head(5)
-        )
-
-        st.markdown("<div style='font-size:0.92rem;font-weight:800;color:#FFFFFF;margin-top:1.1rem;margin-bottom:0.5rem;'>Top 5 Positive Genomic Driver Genes</div>", unsafe_allow_html=True)
-        st.dataframe(
-            driver_df.style.format({
-                "Patient Expression Level": "{:.4f}",
-                "SHAP Attribution Value": "{:+.5f}",
-            }),
-            use_container_width=True,
-            hide_index=True,
-        )
+        render_patient_view(p, res, is_analyzed, total_loaded, encoder)
 
 # Footer
 st.markdown("""
