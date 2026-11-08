@@ -8,7 +8,12 @@
 
 > 🚀 **Live Production Deployment**: Try the interactive web app online at **[https://oncologyaieng.streamlit.app/](https://oncologyaieng.streamlit.app/)**
 
-An end-to-end precision oncology decision-support platform that classifies human tumor samples into 5 distinct cancer subtypes from high-throughput RNA-Seq transcriptomic profiles (20,531 genes). Powered by gradient-boosted decision tree ensembles (**XGBoost**), ANOVA $F$-value feature selection (**SelectKBest**), and game-theoretic explainability (**SHAP TreeExplainer**), wrapped in a dark SaaS clinical dashboard.
+The local model now includes a `NORMAL` reference class. When that class is
+predicted, the dashboard displays **NO CANCER DETECTED**; otherwise it reports
+one of the five supported cancer subtypes. This is a research prototype, not a
+clinical diagnostic device.
+
+An end-to-end research decision-support platform that distinguishes a normal reference profile from 5 supported cancer subtypes using high-throughput RNA-Seq transcriptomic profiles (20,531 genes). Powered by gradient-boosted decision tree ensembles (**XGBoost**), ANOVA $F$-value feature selection (**SelectKBest**), and game-theoretic explainability (**SHAP TreeExplainer**), wrapped in a dark SaaS clinical dashboard.
 
 ---
 
@@ -18,8 +23,10 @@ An end-to-end precision oncology decision-support platform that classifies human
 - [The Clinical Challenge & Purpose](#the-clinical-challenge--purpose)
 - [How It Helps Clinicians & Patients](#how-it-helps-clinicians--patients)
 - [How the Engine Works](#how-the-engine-works)
+- [Cancer / Normal Decision Flow](#cancer--normal-decision-flow)
 - [Project File Structure](#project-file-structure)
 - [Sample Patient Data (`sampledata/`)](#sample-patient-data-sampledata)
+- [Testing with Local CSVs](#testing-with-local-csvs)
 - [Dataset Details](#dataset-details)
 - [Technologies Used](#technologies-used)
 - [Installation & How to Run](#installation--how-to-run)
@@ -70,7 +77,7 @@ In classical oncology, cancer is diagnosed primarily through tissue biopsy and h
 
 | Clinical Benefit | How This System Delivers It |
 |---|---|
-| **Prevents Misclassification** | Multi-class gradient-boosted decision trees deliver >98% generalization accuracy across all 5 cancer cohorts. |
+| **Research classification** | A six-class gradient-boosted model includes a normal reference class and five cancer cohorts. |
 | **Personalized Targeted Therapy** | Identifies specific overexpressed driver genes (e.g., hormone receptors, tyrosine kinases) to help guide targeted inhibitor selection over generic toxic chemotherapy. |
 | **Transparent Explainability (XAI)** | Instead of a black-box probability score, clinicians inspect a SHAP Beeswarm Plot highlighting individual positive and negative genomic drivers. |
 | **Rapid Second Opinion** | Delivers instantaneous inference from standard RNA-Seq CSV outputs, reducing diagnostic turnaround time from days to seconds. |
@@ -91,7 +98,7 @@ In classical oncology, cancer is diagnosed primarily through tissue biopsy and h
                  │
                  ▼
 ┌─────────────────────────────────┐
-│ XGBoost Gradient-Boosted Trees  │  Multi-class softmax probability distribution across 5 cancer classes
+│ XGBoost Gradient-Boosted Trees  │  Multi-class probability distribution across NORMAL and 5 cancer classes
 └────────────────┬────────────────┘
                  │
                  ▼
@@ -107,9 +114,29 @@ In classical oncology, cancer is diagnosed primarily through tissue biopsy and h
 
 1. **Patient Data Ingestion**: Accepts a single-patient or multi-patient CSV containing gene expression counts across 20,531 genomic loci (`gene_0` to `gene_20530`).
 2. **Biomarker Reduction**: The fitted `SelectKBest(f_classif, k=500)` feature selector isolates the 500 genes with the highest statistical variance and class-separation power.
-3. **Ensemble Classification**: The trained `XGBClassifier` calculates posterior probabilities across BRCA, COAD, KIRC, LUAD, and PRAD.
+3. **Ensemble Classification**: The trained `XGBClassifier` calculates posterior probabilities across NORMAL, BRCA, COAD, KIRC, LUAD, and PRAD.
 4. **Shapley Attribution**: The `shap.TreeExplainer` decomposes the patient's individual gene values against the baseline expectation, calculating the exact positive or negative pull each gene exerted on the model's decision.
 5. **UI Rendering**: The results update dynamically in the dark dashboard.
+
+---
+
+## Cancer / Normal Decision Flow
+
+The current model is a six-class classifier:
+
+1. The uploaded expression profile is converted to numeric values.
+2. `SelectKBest` reduces the 20,531 input loci to the 500 features used by the model.
+3. XGBoost produces probabilities for `NORMAL`, `BRCA`, `COAD`, `KIRC`, `LUAD`, and `PRAD`.
+4. If the winning class is `NORMAL`, the **Predicted Subtype** card displays
+   **NO CANCER DETECTED** and the normal probability row is shown first.
+5. Otherwise, the card displays the winning supported cancer subtype and its
+   posterior confidence.
+6. SHAP explanations and the probability matrix are rendered only after the
+   user clicks **Initialize AI Analysis**.
+
+The `NORMAL` class is a normal-tissue reference class, not a universal
+certificate that a person has no cancer. Results require independent clinical
+validation.
 
 ---
 
@@ -125,20 +152,28 @@ Cancer Subtype Prediction via Gene Expression (RNA-Seq)/
 ├── README.md                   # Complete project documentation and clinical guide
 │
 ├── model.pkl                   # Trained XGBoost multi-class classification model
-├── encoder.pkl                 # Scikit-Learn LabelEncoder (maps 0-4 to BRCA, COAD, KIRC, LUAD, PRAD)
+├── encoder.pkl                 # Scikit-Learn LabelEncoder (maps six classes including NORMAL)
 ├── selector.pkl                # Fitted SelectKBest feature selector (top 500 genes)
 ├── sample_patient.csv          # Benchmark patient sample (PRAD, 20,531 genes)
 │
-└── sampledata/                 # Dedicated folder for 20 real patient CSV samples (from TCGA Pan-Cancer)
-    ├── sample_data_1.csv ... sample_data_5.csv   # Initial benchmark samples (PRAD, BRCA, COAD, KIRC, LUAD)
-    └── sample_data_6.csv ... sample_data_20.csv  # 15 additional real patient samples across all 5 subtypes
+└── sampledata/                 # Real TCGA tumor and GTEx normal reference CSV samples
+    ├── sample_data_normal_one.csv
+    ├── sample_data_normal_two.csv
+    └── sample_data_1.csv ... sample_data_20.csv  # Cancer rows plus GTEx normal rows
 ```
 
 ---
 
 ## Sample Patient Data (`sampledata/`)
 
-The `sampledata/` directory contains **20 pre-extracted, real patient samples** directly from the official TCGA Pan-Cancer cohort. Each file contains all 20,531 continuous RNA-Seq transcriptomic expression levels for a unique real patient, with no synthetic/fake data:
+The `sampledata/` directory contains real public expression samples from TCGA
+primary tumors and GTEx non-diseased tissue. `sample_data_normal_one.csv` and
+`sample_data_normal_two.csv` each contain 10 real GTEx normal samples. Each
+`sample_data_1.csv` through `sample_data_20.csv` retains its existing cancer
+rows and now includes two additional real GTEx normal rows for mixed-result
+testing. GTEx and TCGA are de-identified public datasets. The normal rows use synthetic
+display names and IDs (`PID-NORMAL-####`) so no public sample identifier is
+shown in the UI; the gene-expression values remain unchanged.
 
 | File | Sample ID | Ground Truth Diagnosis | Target Organ | Model Confidence |
 |---|---|---|---|---|
@@ -167,17 +202,52 @@ The `sampledata/` directory contains **20 pre-extracted, real patient samples** 
 
 ---
 
+## Testing with Local CSVs
+
+The repository includes UI-ready public-expression test files:
+
+| File | Purpose |
+|---|---|
+| `real_normal_patient_test.csv` | One GTEx normal-tissue expression profile with synthetic display metadata |
+| `real_cancer_patient_test.csv` | One TCGA primary-tumor expression profile with synthetic display metadata |
+| `sampledata/sample_data_normal_one.csv` | Ten real GTEx normal-tissue profiles |
+| `sampledata/sample_data_normal_two.csv` | Ten real GTEx normal-tissue profiles |
+| `sampledata/sample_data_1.csv` – `sample_data_20.csv` | Existing cancer rows plus two real normal rows per file |
+
+Normal test rows use synthetic names and IDs such as `PID-NORMAL-0001` so
+public sample identifiers are not displayed in the dashboard. Their
+gene-expression values remain from the public normal-tissue data.
+
+Each uploaded file must contain `gene_0` through `gene_20530` in that order.
+Optional `Patient ID` and `Patient Name` columns may appear before the gene
+columns. To test the UI:
+
+```powershell
+streamlit run app.py
+```
+
+Upload a CSV, click **Initialize AI Analysis**, and inspect the
+**Predicted Subtype** card.
+
+---
+
 ## Dataset Details
 
-- **Origin**: The Cancer Genome Atlas (TCGA) Pan-Cancer project, hosted on the **UCI Machine Learning Repository (Dataset ID: 401)**.
-- **Samples**: 801 patients randomly selected from the TCGA HiSeq database.
-- **Features**: 20,531 continuous attributes representing $\log_2(\text{RSEM counts} + 1)$ transcriptomic expression levels.
-- **Class Distribution**:
-  - `BRCA`: 300 samples (37.5%)
-  - `KIRC`: 146 samples (18.2%)
-  - `LUAD`: 141 samples (17.6%)
-  - `PRAD`: 136 samples (17.0%)
-  - `COAD`: 78 samples (9.7%)
+The current model is trained from the UCSC Xena Toil TCGA/GTEx compendium,
+which applies one RNA-seq processing pipeline to both tumor and non-diseased
+samples. It uses 400 matched normal-tissue GTEx samples and 80 primary-tumor
+samples for each supported subtype. The six training classes are `NORMAL`,
+`BRCA`, `COAD`, `KIRC`, `LUAD`, and `PRAD`. The training script selects the
+20,531 highest-variance loci and then reduces them to 500 biomarkers.
+
+The uploaded CSV must use the same `gene_0` through `gene_20530` feature order
+produced by the current training pipeline. The older UCI-only CSVs remain
+syntactically readable but are not guaranteed to be calibrated for this
+retrained model.
+
+- **Cancer source**: TCGA primary tumors from the UCSC Xena Toil compendium.
+- **Non-cancer source**: GTEx non-diseased tissue from the same compendium.
+- **Expression values**: Uniformly processed log-scale RSEM/TPM expression values.
 
 ---
 
@@ -236,11 +306,13 @@ pip install -r requirements.txt
 ```
 
 ### 4. (Optional) Retrain the Model
-To re-fetch the raw dataset from UCI / HuggingFace and re-train the XGBoost model:
+To download the public TCGA/GTEx compendium and retrain the six-class model:
 ```bash
 python train_model.py
 ```
-This script automatically generates `model.pkl`, `encoder.pkl`, `selector.pkl`, and `sample_patient.csv`.
+This script automatically generates `model.pkl`, `encoder.pkl`, `selector.pkl`,
+and `sample_patient.csv`. The download is large and requires a stable internet
+connection.
 
 ### 5. Launch the Dashboard
 ```bash
@@ -266,7 +338,7 @@ The dashboard is structured into four functional areas:
    - **Model Confidence**: Posterior probability score of the diagnosed subtype.
 4. **Analysis Matrix (Middle Row)**:
    - **Biomarker Expression Loci Waveform**: Smooth interpolated wave chart plotting the patient's top 30 expression peaks across the transcriptome.
-   - **Pan-Cancer Subtype Heatmap Matrix**: Ranked probability distribution and visual progress bars across all 5 cancer classes.
+   - **Cancer / Normal Probability Matrix**: Ranked probability distribution across NORMAL and all five cancer classes.
 5. **Model Interpretability (Bottom Row)**:
    - **Unified SHAP Card**: Game-theoretic Shapley beeswarm plot indicating individual gene impacts on the classification, paired with an interactive table of the **Top 5 Positive Genomic Driver Genes**.
 

@@ -1,153 +1,177 @@
 """
-train_model.py
-Training pipeline for RNA-Seq Cancer Subtype Prediction.
-- Imports fetch_ucirepo from ucimlrepo and fetches dataset ID 401 (gene expression cancer RNA-Seq)
-- Extracts features (X) and targets (y)
-- Saves the very first row of features (X) into sample_patient.csv
-- Converts text labels in 'y' into integers using Scikit-Learn's LabelEncoder
-- Uses SelectKBest(f_classif, k=500) to reduce features to the top 500 most important genes
-- Trains an XGBClassifier with objective='multi:softmax'
-- Saves model.pkl, encoder.pkl, selector.pkl to the root directory using joblib
+Train the cancer-versus-normal RNA-seq classifier.
+
+The training data comes from the UCSC Xena Toil TCGA/GTEx compendium, where
+tumor and non-diseased samples were processed through the same RNA-seq
+pipeline. The resulting six-class model contains NORMAL plus five cancer
+subtypes and expects the exported gene_0 ... gene_20530 feature format.
 """
 
-import sys
-import pandas as pd
-import numpy as np
+import gzip
+import os
+from pathlib import Path
+
 import joblib
-from ucimlrepo import fetch_ucirepo
-from ucimlrepo.dotdict import dotdict
-from sklearn.preprocessing import LabelEncoder
+import numpy as np
+import pandas as pd
 from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.metrics import accuracy_score, classification_report
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, accuracy_score
+from sklearn.preprocessing import LabelEncoder
 from xgboost import XGBClassifier
 
 
-def fetch_dataset_401():
-    """
-    Fetch dataset ID 401 using fetch_ucirepo.
-    UCI's API currently returns data_url: None for dataset 401 in some regions,
-    causing ucimlrepo to raise DatasetNotFoundError.
-    When this happens, we seamlessly load the exact TCGA Pan-Cancer 801x20531
-    dataset and return the identical dotdict structure.
-    """
-    try:
-        print("[1/6] Fetching dataset ID 401 via fetch_ucirepo(id=401)...")
-        dataset = fetch_ucirepo(id=401)
-        if dataset and hasattr(dataset, "data") and dataset.data.features is not None:
-            return dataset
-    except Exception as e:
-        print(f"      ucimlrepo notice: {e}")
-
-    print("      Retrieving official TCGA-PANCAN RNA-Seq dataset (UCI ID 401)...")
-    url = "https://huggingface.co/datasets/rtemis/tcga-pancan-hiseq/resolve/main/data/tcga-pancan-hiseq.parquet"
-    df = pd.read_parquet(url)
-
-    # Gene feature columns: gene_0 ... gene_20530
-    gene_cols = [c for c in df.columns if c.startswith("gene_")]
-    X = df[gene_cols]
-    y = df[["cancer_type"]].rename(columns={"cancer_type": "Class"})
-
-    return dotdict({
-        "data": dotdict({
-            "features": X,
-            "targets": y
-        })
-    })
+EXPRESSION_URL = (
+    "https://toil-xena-hub.s3.dualstack.us-east-1.amazonaws.com/download/"
+    "TcgaTargetGtex_rsem_gene_tpm.gz"
+)
+PHENOTYPE_URL = (
+    "https://toil-xena-hub.s3.dualstack.us-east-1.amazonaws.com/download/"
+    "TcgaTargetGTEX_phenotype.txt.gz"
+)
+EXPRESSION_FILE = Path("xena_expression.gz")
+PHENOTYPE_FILE = Path("xena_phenotype.txt.gz")
+RANDOM_STATE = 42
+SAMPLES_PER_CLASS = 80
+FEATURE_COUNT = 20531
+SELECTED_FEATURE_COUNT = 500
 
 
-def main():
-    print("=" * 65)
-    print("🧬 RNA-Seq Cancer Subtype Prediction - Model Training Pipeline")
-    print("=" * 65)
+def download_if_missing(url: str, destination: Path) -> None:
+    if destination.exists():
+        return
+    import urllib.request
 
-    # 1. Fetch dataset ID 401
-    dataset = fetch_dataset_401()
-    X = dataset.data.features
-    y = dataset.data.targets
+    print(f"Downloading {destination}...")
+    urllib.request.urlretrieve(url, destination)
 
-    print(f"      Features shape: {X.shape}")
-    print(f"      Targets shape:  {y.shape}")
 
-    # Ensure X is a DataFrame
-    if not isinstance(X, pd.DataFrame):
-        X = pd.DataFrame(X)
+def choose_samples(phenotype: pd.DataFrame) -> tuple[list[str], list[str]]:
+    """Return balanced sample IDs and labels from matched tissue groups."""
+    cancer_rules = {
+        "BRCA": ("Breast Invasive Carcinoma", "Primary Tumor"),
+        "COAD": ("Colon Adenocarcinoma", "Primary Tumor"),
+        "KIRC": ("Kidney Clear Cell Carcinoma", "Primary Tumor"),
+        "LUAD": ("Lung Adenocarcinoma", "Primary Tumor"),
+        "PRAD": ("Prostate Adenocarcinoma", "Primary Tumor"),
+    }
+    normal_rules = {
+        "Breast - Mammary Tissue",
+        "Colon - Transverse",
+        "Colon - Sigmoid",
+        "Kidney - Cortex",
+        "Lung",
+        "Prostate",
+    }
 
-    # Ensure y is a Series
-    if isinstance(y, pd.DataFrame):
-        target_col = y.columns[0]
-        y_series = y[target_col]
-    else:
-        y_series = pd.Series(y)
+    rng = np.random.default_rng(RANDOM_STATE)
+    sample_ids: list[str] = []
+    labels: list[str] = []
 
-    # 2. Save the very first row into sample_patient.csv (only row index 0)
-    print("\n[2/6] Saving first row of features to sample_patient.csv...")
-    sample_patient = X.iloc[[0]].copy()
-    sample_patient.to_csv("sample_patient.csv", index=False)
-    print(f"      Saved sample_patient.csv with {sample_patient.shape[1]} features.")
-    print(f"      Sample patient ground truth label: {y_series.iloc[0]}")
+    for label, (category, sample_type) in cancer_rules.items():
+        matches = phenotype[
+            (phenotype["detailed_category"] == category)
+            & (phenotype["_sample_type"] == sample_type)
+            & (phenotype["_study"] == "TCGA")
+        ]["sample"].dropna().tolist()
+        selected = rng.choice(matches, size=min(SAMPLES_PER_CLASS, len(matches)), replace=False)
+        sample_ids.extend(selected.tolist())
+        labels.extend([label] * len(selected))
 
-    # 3. Convert text labels in 'y' into integers using LabelEncoder
-    print("\n[3/6] Encoding text labels into integers with LabelEncoder...")
-    encoder = LabelEncoder()
-    y_encoded = encoder.fit_transform(y_series)
-    classes = encoder.classes_
-    print(f"      Discovered {len(classes)} classes: {list(classes)}")
-    mapping = {idx: cls_name for idx, cls_name in enumerate(classes)}
-    print(f"      Label Mapping: {mapping}")
-
-    # 4. Feature Selection: SelectKBest(f_classif, k=500)
-    print("\n[4/6] Reducing features to top 500 genes with SelectKBest(f_classif, k=500)...")
-    selector = SelectKBest(score_func=f_classif, k=500)
-    X_selected = selector.fit_transform(X, y_encoded)
-    selected_features = X.columns[selector.get_support()].tolist()
-    print(f"      Successfully reduced dimensions: {X.shape[1]} -> {X_selected.shape[1]} genes.")
-    print(f"      Top 5 selected genes: {selected_features[:5]}")
-
-    # Split for validation
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_selected, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
+    normal_matches = phenotype[
+        phenotype["detailed_category"].isin(normal_rules)
+        & (phenotype["_sample_type"] == "Normal Tissue")
+        & (phenotype["_study"] == "GTEX")
+    ]["sample"].dropna().tolist()
+    selected = rng.choice(
+        normal_matches,
+        size=min(SAMPLES_PER_CLASS * len(cancer_rules), len(normal_matches)),
+        replace=False,
     )
+    sample_ids.extend(selected.tolist())
+    labels.extend(["NORMAL"] * len(selected))
 
-    # 5. Train XGBClassifier with objective='multi:softmax'
-    print("\n[5/6] Training XGBClassifier(objective='multi:softmax')...")
-    num_classes = len(classes)
+    if len(set(labels)) != 6:
+        raise RuntimeError(f"Could not assemble all six classes: {sorted(set(labels))}")
+    return sample_ids, labels
+
+
+def load_expression(sample_ids: list[str]) -> pd.DataFrame:
+    """Load selected samples and retain the highest-variance 20,531 genes."""
+    wanted = set(sample_ids)
+    with gzip.open(EXPRESSION_FILE, "rt", encoding="utf-8", errors="replace") as handle:
+        header = handle.readline().rstrip("\n").split("\t")
+    selected_columns = [column for column in header if column in wanted]
+    if len(selected_columns) != len(sample_ids):
+        missing = sorted(wanted - set(selected_columns))
+        raise RuntimeError(f"Expression matrix is missing {len(missing)} selected samples.")
+
+    matrix = pd.read_csv(
+        EXPRESSION_FILE,
+        sep="\t",
+        compression="gzip",
+        usecols=["sample", *selected_columns],
+        index_col=0,
+    )
+    matrix = matrix.apply(pd.to_numeric, errors="coerce").fillna(-9.9658)
+    matrix = matrix.loc[~matrix.index.duplicated(keep="first")]
+    variances = matrix.var(axis=1)
+    if len(matrix) < FEATURE_COUNT:
+        raise RuntimeError(f"Expected at least {FEATURE_COUNT} genes, found {len(matrix)}.")
+    keep_genes = variances.nlargest(FEATURE_COUNT).index
+    samples_first = matrix.loc[keep_genes, sample_ids].T
+    samples_first.columns = [f"gene_{i}" for i in range(FEATURE_COUNT)]
+    return samples_first
+
+
+def main() -> None:
+    download_if_missing(EXPRESSION_URL, EXPRESSION_FILE)
+    download_if_missing(PHENOTYPE_URL, PHENOTYPE_FILE)
+    phenotype = pd.read_csv(PHENOTYPE_FILE, sep="\t", encoding="latin1")
+    sample_ids, labels = choose_samples(phenotype)
+    X = load_expression(sample_ids)
+    y = pd.Series(labels, name="Class")
+
+    print(f"Training samples: {X.shape[0]} x {X.shape[1]}")
+    print(f"Class counts: {y.value_counts().to_dict()}")
+    X.to_csv("training_feature_template.csv", index=False)
+    X.iloc[[0]].to_csv("sample_patient.csv", index=False)
+
+    encoder = LabelEncoder()
+    y_encoded = encoder.fit_transform(y)
+    selector = SelectKBest(score_func=f_classif, k=SELECTED_FEATURE_COUNT)
+    X_selected = selector.fit_transform(X, y_encoded)
+
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_selected,
+        y_encoded,
+        test_size=0.2,
+        random_state=RANDOM_STATE,
+        stratify=y_encoded,
+    )
     model = XGBClassifier(
-        objective="multi:softmax",
-        num_class=num_classes,
+        objective="multi:softprob",
+        num_class=len(encoder.classes_),
         eval_metric="mlogloss",
-        n_estimators=100,
+        n_estimators=180,
         max_depth=4,
-        learning_rate=0.1,
-        random_state=42,
+        learning_rate=0.08,
+        subsample=0.9,
+        colsample_bytree=0.8,
+        random_state=RANDOM_STATE,
         tree_method="hist",
-        n_jobs=-1
+        n_jobs=-1,
     )
     model.fit(X_train, y_train)
-
-    # Evaluate on validation set
     y_pred = model.predict(X_val)
-    val_acc = accuracy_score(y_val, y_pred)
-    print(f"\n      Validation Accuracy: {val_acc * 100:.2f}%")
-    print("\n      Classification Report:")
-    print(classification_report(y_val, y_pred, target_names=classes))
-
-    # Refit on full selected dataset for production model
-    print("      Refitting model on all selected samples...")
+    print(f"Validation accuracy: {accuracy_score(y_val, y_pred) * 100:.2f}%")
+    print(classification_report(y_val, y_pred, target_names=encoder.classes_))
     model.fit(X_selected, y_encoded)
 
-    # 6. Save model.pkl, encoder.pkl, selector.pkl using joblib
-    print("\n[6/6] Saving artifacts with joblib...")
     joblib.dump(model, "model.pkl")
-    print("      -> Saved model.pkl")
     joblib.dump(encoder, "encoder.pkl")
-    print("      -> Saved encoder.pkl")
     joblib.dump(selector, "selector.pkl")
-    print("      -> Saved selector.pkl")
-
-    print("\n" + "=" * 65)
-    print(" Pipeline complete! All artifacts and sample_patient.csv created.")
-    print("=" * 65)
+    print(f"Saved classes: {list(encoder.classes_)}")
 
 
 if __name__ == "__main__":

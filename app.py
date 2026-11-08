@@ -45,6 +45,7 @@ st.set_page_config(
 # CLINICAL METADATA
 # ─────────────────────────────────────────────────────────────────────────────
 SUBTYPE_META = {
+    "NORMAL": {"full": "No cancer detected in the normal reference class", "organ": "Non-cancer", "hex": "#10B981", "badge": "🟢"},
     "BRCA": {"full": "Breast Invasive Carcinoma",         "organ": "Breast",   "hex": "#8B5CF6", "badge": "🔴"},
     "COAD": {"full": "Colon Adenocarcinoma",               "organ": "Colon",    "hex": "#A78BFA", "badge": "🟡"},
     "KIRC": {"full": "Kidney Renal Clear Cell Carcinoma",  "organ": "Kidney",   "hex": "#10B981", "badge": "🟢"},
@@ -1144,7 +1145,7 @@ div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFileUploader"]) div.
 # ARTIFACT LOADER
 # ─────────────────────────────────────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
-def load_artifacts():
+def load_artifacts(artifact_stamp):
     missing = [f for f in ("model.pkl", "encoder.pkl", "selector.pkl") if not os.path.exists(f)]
     if missing:
         return None, None, None, f"Missing: {', '.join(missing)} — run `python train_model.py`."
@@ -1284,7 +1285,7 @@ def get_standby_result():
         pred_idx=-1,
         meta={"full": "Awaiting patient inference", "organ": "—", "hex": "#7A7D93"},
         confidence=0.0,
-        proba=[0.0] * 5,
+        proba=[0.0] * 6,
         feat_names=[],
         X_sel=np.zeros((1, 500)),
         class_expl=None,
@@ -1331,7 +1332,11 @@ def render_patient_view(patient_info, result, is_analyzed, total_patients, encod
 
     meta_data = result['meta'] if is_analyzed else {"full": "Awaiting patient inference", "organ": "—", "hex": "#8B8FA3"}
     subtype_badge = meta_data["organ"] if is_analyzed else "0%"
-    subtype_value = result['pred_code'] if is_analyzed else "NULL"
+    subtype_value = (
+        "NO CANCER DETECTED"
+        if is_analyzed and result["pred_code"] == "NORMAL"
+        else (result["pred_code"] if is_analyzed else "NULL")
+    )
     subtype_description = meta_data["full"] if is_analyzed else "Awaiting patient inference"
     subtype_color = meta_data['hex'] if is_analyzed else "#8B8FA3"
     badge_style_sub = "badge-green" if is_analyzed else "badge-purple"
@@ -1357,7 +1362,7 @@ def render_patient_view(patient_info, result, is_analyzed, total_patients, encod
 <div style="font-size:0.8rem;font-weight:700;color:#8B8FA3;">Predicted Subtype</div>
 <span class="in-badge-pill {badge_style_sub}">{subtype_badge}</span>
 </div>
-<div class="in-stat-value" style="color:{subtype_color};">{subtype_value}</div>
+<div class="in-stat-value" style="color:{subtype_color};font-size:{'1.55rem' if subtype_value == 'NO CANCER DETECTED' else '2.2rem'};">{subtype_value}</div>
 <div style="font-size:0.75rem;color:#71758B;margin-top:0.4rem;">{subtype_description}</div>
 </div>""", unsafe_allow_html=True)
 
@@ -1415,15 +1420,18 @@ def render_patient_view(patient_info, result, is_analyzed, total_patients, encod
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
             <div>
                 <div class="in-card-title">Pan-Cancer Subtype Heatmap Matrix</div>
-                <div class="in-card-sub">Clinical Roadmap &middot; COAD &middot; KIRC &middot; LUAD &middot; PRAD &middot; BRCA</div>
+                <div class="in-card-sub">Normal reference &middot; COAD &middot; KIRC &middot; LUAD &middot; PRAD &middot; BRCA</div>
             </div>
-            <span class="in-badge-pill badge-green">TCGA 401</span>
+            <span class="in-badge-pill badge-green">TCGA + GTEx</span>
         </div>
         """, unsafe_allow_html=True)
 
-        probs = result['proba'] if is_analyzed and result['proba'] is not None else [0.0]*5
-        classes = encoder.classes_ if encoder else ["BRCA", "COAD", "KIRC", "LUAD", "PRAD"]
-        for idx, code in enumerate(classes):
+        probs = result['proba'] if is_analyzed and result['proba'] is not None else [0.0] * len(encoder.classes_ if encoder else ["NORMAL", "BRCA", "COAD", "KIRC", "LUAD", "PRAD"])
+        classes = list(encoder.classes_ if encoder else ["NORMAL", "BRCA", "COAD", "KIRC", "LUAD", "PRAD"])
+        display_classes = ["NORMAL"] + [code for code in classes if code != "NORMAL"]
+        class_indexes = {code: idx for idx, code in enumerate(classes)}
+        for code in display_classes:
+            idx = class_indexes[code]
             m = SUBTYPE_META.get(code, {"hex": "#8B5CF6", "organ": "Pan-Cancer", "badge": ""})
             pct = float(probs[idx]) * 100 if is_analyzed and idx < len(probs) else 0.0
             is_top = is_analyzed and code == result['pred_code']
@@ -1510,7 +1518,12 @@ def render_patient_view(patient_info, result, is_analyzed, total_patients, encod
                 hide_index=True,
             )
 
-model, encoder, selector, art_err = load_artifacts()
+artifact_stamp = tuple(
+    (name, os.path.getmtime(name), os.path.getsize(name))
+    for name in ("model.pkl", "encoder.pkl", "selector.pkl")
+    if os.path.exists(name)
+)
+model, encoder, selector, art_err = load_artifacts(artifact_stamp)
 
 # Initialize session state for patient records
 if "patient_records" not in st.session_state:
@@ -1523,27 +1536,6 @@ if "is_analyzed" not in st.session_state:
     st.session_state["is_analyzed"] = False
 if "patient_results_cache" not in st.session_state:
     st.session_state["patient_results_cache"] = {}
-
-# Initial startup splash loader
-if "app_loaded" not in st.session_state:
-    st.session_state["app_loaded"] = True
-    splash = st.empty()
-    rungs_html = "".join([
-        f'<div class="dna-bar" style="--i: {i};"><span class="dna-rung"></span></div>'
-        for i in range(8)
-    ])
-    splash.markdown(f"""
-    <div class="dna-loader-wrapper" style="margin: 3rem 0 2rem 0;">
-        <div class="dna-loader" role="status">
-            <div class="dna-loader-helix">
-                {rungs_html}
-            </div>
-        </div>
-        <div class="dna-loader-copy"></div>
-    </div>
-    """, unsafe_allow_html=True)
-    time.sleep(2.0)
-    splash.empty()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. TOP NAVBAR
@@ -1689,7 +1681,9 @@ if run_clicked:
 is_analyzed = st.session_state.get("is_analyzed", False)
 active_query = st.session_state.get("search_query", "").strip()
 
-if not loaded_records or features_df is None:
+# Keep uploaded patient metadata hidden until the user explicitly starts analysis.
+# This prevents the first record from appearing alongside the standby metrics.
+if not loaded_records or features_df is None or not is_analyzed:
     # Standby state with placeholder patient
     placeholder_patient = {"index": None, "id": None, "name": None}
     standby_res = get_standby_result()
@@ -1762,6 +1756,6 @@ else:
 # Footer
 st.markdown("""
 <div style="border-top:1px solid #1E202C;margin-top:2.5rem;padding-top:1.2rem;text-align:center;color:#65687C;font-size:0.76rem;">
-    Oncology AI Engine · TCGA Pan-Cancer RNA-Seq (UCI ID 401) · XGBoost + SelectKBest + SHAP
+    Oncology AI Engine · TCGA + GTEx RNA-Seq reference model · XGBoost + SelectKBest + SHAP
 </div>
 """, unsafe_allow_html=True)
