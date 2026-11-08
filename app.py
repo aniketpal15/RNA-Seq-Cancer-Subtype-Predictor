@@ -927,6 +927,15 @@ div.stButton > button[kind="primary"] {
     border: 1px solid #2F80FF !important;
     border-radius: 8px !important;
     box-shadow: none !important;
+    min-height: 44px !important;
+    padding: 0.58rem 1.25rem !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    max-width: 215px !important;
+    margin-left: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 div.stButton > button[kind="primary"]:hover {
@@ -1542,7 +1551,7 @@ if "app_loaded" not in st.session_state:
 # Middle: Upload File Section
 # Right: Upload Status & Pill Menu
 # ─────────────────────────────────────────────────────────────────────────────
-nav_left, nav_mid, nav_right = st.columns([1.3, 1.8, 1.4], gap="medium", vertical_alignment="center")
+nav_left, nav_mid, nav_right = st.columns([1.3, 2.1, 1.1], gap="medium", vertical_alignment="center")
 
 with nav_left:
     logo_path = "favicon.png" if os.path.exists("favicon.png") else ("public/favicon.png" if os.path.exists("public/favicon.png") else "")
