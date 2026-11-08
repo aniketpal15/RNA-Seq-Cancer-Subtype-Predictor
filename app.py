@@ -10,8 +10,9 @@ Features:
   Semi-circular Gauge (Quality Score slot), Gradient Insight Callout, and SHAP beeswarm.
 """
 
-import os, time
+import os, time, base64
 from contextlib import contextmanager
+from PIL import Image
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -22,10 +23,20 @@ import matplotlib.pyplot as plt
 import shap
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PAGE CONFIG
+# PAGE CONFIG & FAVICON
 # ─────────────────────────────────────────────────────────────────────────────
+app_icon_img = None
+for icon_candidate in ["favicon.png", "public/favicon.png", "public/app_icon.png", "public/icon.png"]:
+    if os.path.exists(icon_candidate):
+        try:
+            app_icon_img = Image.open(icon_candidate)
+            break
+        except Exception:
+            pass
+
 st.set_page_config(
     page_title="Oncology AI Engine",
+    page_icon=app_icon_img or "🧬",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -1534,9 +1545,18 @@ if "app_loaded" not in st.session_state:
 nav_left, nav_mid, nav_right = st.columns([1.3, 1.8, 1.4], gap="medium", vertical_alignment="center")
 
 with nav_left:
-    st.markdown("""
+    logo_path = "favicon.png" if os.path.exists("favicon.png") else ("public/favicon.png" if os.path.exists("public/favicon.png") else "")
+    logo_html = ""
+    if logo_path:
+        with open(logo_path, "rb") as f:
+            b64_logo = base64.b64encode(f.read()).decode("utf-8")
+        logo_html = f'<img src="data:image/png;base64,{b64_logo}" style="width:34px;height:34px;border-radius:9px;border:1px solid rgba(59,156,255,0.45);box-shadow:0 0 10px rgba(59,156,255,0.4);" />'
+    else:
+        logo_html = '<div class="nav-brand-dot"></div>'
+
+    st.markdown(f"""
     <div style="display:flex;align-items:center;gap:0.8rem;">
-        <div class="nav-brand-dot"></div>
+        {logo_html}
         <div class="nav-brand-title">Oncology AI Engine</div>
     </div>
     """, unsafe_allow_html=True)
