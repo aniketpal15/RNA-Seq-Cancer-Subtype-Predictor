@@ -1,10 +1,17 @@
 # Oncology AI Engine — Cancer Subtype Prediction via Gene Expression (RNA-Seq)
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://oncologyaieng.streamlit.app/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+
+> 🚀 **Live Production Deployment**: Try the interactive web app online at **[https://oncologyaieng.streamlit.app/](https://oncologyaieng.streamlit.app/)**
+
 An end-to-end precision oncology decision-support platform that classifies human tumor samples into 5 distinct cancer subtypes from high-throughput RNA-Seq transcriptomic profiles (20,531 genes). Powered by gradient-boosted decision tree ensembles (**XGBoost**), ANOVA $F$-value feature selection (**SelectKBest**), and game-theoretic explainability (**SHAP TreeExplainer**), wrapped in a dark SaaS clinical dashboard.
 
 ---
 
 ## Table of Contents
+- [Live Demo](#live-demo)
 - [The Clinical Challenge & Purpose](#the-clinical-challenge--purpose)
 - [How It Helps Clinicians & Patients](#how-it-helps-clinicians--patients)
 - [How the Engine Works](#how-the-engine-works)
@@ -15,6 +22,14 @@ An end-to-end precision oncology decision-support platform that classifies human
 - [Installation & How to Run](#installation--how-to-run)
 - [Dashboard Architecture](#dashboard-architecture)
 - [Medical Disclaimer](#medical-disclaimer)
+
+---
+
+## Live Demo
+
+The platform is continuously deployed and accessible globally on Streamlit Community Cloud:
+- **Web App URL**: [https://oncologyaieng.streamlit.app/](https://oncologyaieng.streamlit.app/)
+- **Features Online**: Multi-patient upload, sample cohort cycling, instant SelectKBest + XGBoost classification, and SHAP feature attribution directly in your browser.
 
 ---
 
@@ -165,7 +180,15 @@ The `sampledata/` directory contains **20 pre-extracted, real patient samples** 
 
 ## Installation & How to Run
 
-### 1. Clone or Open the Repository
+### Quick Start (No Installation Needed)
+Access the live production deployment directly in your browser:
+👉 **[https://oncologyaieng.streamlit.app/](https://oncologyaieng.streamlit.app/)**
+
+---
+
+### Local Setup
+
+#### 1. Clone or Open the Repository
 ```bash
 cd "Cancer Subtype Prediction via Gene Expression (RNA-Seq)"
 ```
