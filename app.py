@@ -939,28 +939,6 @@ div.stButton > button:not([kind="primary"]):hover {
     box-shadow: 0 0 10px rgba(47, 128, 255, 0.25) !important;
 }
 
-/* Highlighted Top Download Buttons */
-div[data-testid="stDownloadButton"] > button {
-    background: linear-gradient(135deg, #1E40AF 0%, #2563EB 50%, #3B82F6 100%) !important;
-    color: #FFFFFF !important;
-    border: 1px solid #60A5FA !important;
-    border-radius: 9999px !important;
-    font-weight: 700 !important;
-    font-size: 0.84rem !important;
-    letter-spacing: 0.3px !important;
-    padding: 0.45rem 1.1rem !important;
-    box-shadow: 0 0 16px rgba(37, 99, 235, 0.42) !important;
-    transition: all 0.22s ease-in-out !important;
-}
-
-div[data-testid="stDownloadButton"] > button:hover {
-    background: linear-gradient(135deg, #2563EB 0%, #3B82F6 50%, #60A5FA 100%) !important;
-    border-color: #93C5FD !important;
-    box-shadow: 0 0 26px rgba(59, 130, 246, 0.75) !important;
-    transform: translateY(-2px) scale(1.02) !important;
-    color: #FFFFFF !important;
-}
-
 div[data-testid="stTextInput"] input {
     background: #151515 !important;
     border: 1px solid #3A3A3A !important;
@@ -1546,49 +1524,6 @@ if "app_loaded" not in st.session_state:
     """, unsafe_allow_html=True)
     time.sleep(2.0)
     splash.empty()
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 0. TOP DOWNLOAD HEADER (Download for Windows & Download for Android)
-# Placed above the main dashboard container with highlighted action pills
-# ─────────────────────────────────────────────────────────────────────────────
-top_dl_left, top_dl_mid, top_dl_right = st.columns([1.6, 2.2, 1.6], vertical_alignment="center")
-
-with top_dl_left:
-    exe_path = "Oncology_AI.exe"
-    exe_bytes = b""
-    if os.path.exists(exe_path):
-        with open(exe_path, "rb") as f:
-            exe_bytes = f.read()
-    st.download_button(
-        label="📥 Download for Windows",
-        data=exe_bytes,
-        file_name="Oncology_AI.exe",
-        mime="application/vnd.microsoft.portable-executable",
-        use_container_width=True,
-        help="Download standalone Windows desktop executable to run in your system"
-    )
-
-with top_dl_mid:
-    st.markdown("""<div style="text-align:center;font-size:0.75rem;font-weight:700;color:#8B8FA3;letter-spacing:0.8px;">
-STANDALONE APP SUITE &middot; WINDOWS &amp; ANDROID
-</div>""", unsafe_allow_html=True)
-
-with top_dl_right:
-    apk_path = "Oncology_AI.apk" if os.path.exists("Oncology_AI.apk") else os.path.join("public", "Oncology_AI.apk")
-    apk_bytes = b""
-    if os.path.exists(apk_path):
-        with open(apk_path, "rb") as f:
-            apk_bytes = f.read()
-    st.download_button(
-        label="📥 Download for Android",
-        data=apk_bytes,
-        file_name="Oncology_AI.apk",
-        mime="application/vnd.android.package-archive",
-        use_container_width=True,
-        help="Download Android APK file to run in app format on your mobile phone"
-    )
-
-st.markdown("""<div style="border-bottom:1px solid #212230;margin-top:0.4rem;margin-bottom:1.1rem;"></div>""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. TOP NAVBAR

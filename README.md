@@ -1,6 +1,8 @@
 # Oncology AI Engine — Cancer Subtype Prediction via Gene Expression (RNA-Seq)
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://oncologyaieng.streamlit.app/)
+[![Windows Download](https://img.shields.io/badge/Windows-Download%20.exe-blue?logo=windows)](https://github.com/aniketpal15/RNA-Seq-Cancer-Subtype-Predictor/raw/main/Oncology_AI.exe)
+[![Android Download](https://img.shields.io/badge/Android-Download%20.apk-brightgreen?logo=android)](https://github.com/aniketpal15/RNA-Seq-Cancer-Subtype-Predictor/raw/main/Oncology_AI.apk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
@@ -11,6 +13,7 @@ An end-to-end precision oncology decision-support platform that classifies human
 ---
 
 ## Table of Contents
+- [Downloads & Standalone Apps](#-downloads--standalone-apps)
 - [Live Demo](#live-demo)
 - [The Clinical Challenge & Purpose](#the-clinical-challenge--purpose)
 - [How It Helps Clinicians & Patients](#how-it-helps-clinicians--patients)
@@ -22,6 +25,18 @@ An end-to-end precision oncology decision-support platform that classifies human
 - [Installation & How to Run](#installation--how-to-run)
 - [Dashboard Architecture](#dashboard-architecture)
 - [Medical Disclaimer](#medical-disclaimer)
+
+---
+
+## 📥 Downloads & Standalone Apps
+
+Run the Oncology AI Engine directly on your PC or Android mobile phone:
+
+| Platform | Format | Direct Download Link | Description & Usage |
+|---|---|---|---|
+| **Windows Desktop** | `.exe` (Standalone) | [📥 **Download `Oncology_AI.exe`**](https://github.com/aniketpal15/RNA-Seq-Cancer-Subtype-Predictor/raw/main/Oncology_AI.exe) | Double-click `Oncology_AI.exe`. Launches directly as a native standalone application window on PC (no browser tabs or address bar). Runs 100% offline with local engine. |
+| **Android Mobile** | `.apk` (Production) | [📥 **Download `Oncology_AI.apk`**](https://github.com/aniketpal15/RNA-Seq-Cancer-Subtype-Predictor/raw/main/Oncology_AI.apk) | Install on any Android mobile phone to open full-screen in native app format. |
+| **Web Browser** | Cloud Web App | [🌐 **Open Web App**](https://oncologyaieng.streamlit.app/) | Access instantly in any browser on any device without downloading anything. |
 
 ---
 
@@ -189,7 +204,14 @@ Access the live production deployment directly in your browser:
 
 ### Local Setup
 
-#### 1. Clone or Open the Repository
+#### Option A: 1-Click Windows Desktop Application (No Terminal Required)
+Simply double-click **[`Oncology_AI.exe`](Oncology_AI.exe)**:
+- Starts the local inference engine in the background.
+- Opens the dashboard in a dedicated, distraction-free desktop application window (no browser tabs or URL bar).
+- Runs 100% offline on your PC.
+
+#### Option B: Run via Terminal / PowerShell
+1. Clone or Open the Repository:
 ```bash
 cd "Cancer Subtype Prediction via Gene Expression (RNA-Seq)"
 ```
