@@ -11,6 +11,7 @@ Features:
 """
 
 import os, time
+from contextlib import contextmanager
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -33,7 +34,7 @@ st.set_page_config(
 # CLINICAL METADATA
 # ─────────────────────────────────────────────────────────────────────────────
 SUBTYPE_META = {
-    "BRCA": {"full": "Breast Invasive Carcinoma",         "organ": "Breast",   "hex": "#8B5CF6", "badge": "🎀"},
+    "BRCA": {"full": "Breast Invasive Carcinoma",         "organ": "Breast",   "hex": "#8B5CF6", "badge": "🔴"},
     "COAD": {"full": "Colon Adenocarcinoma",               "organ": "Colon",    "hex": "#A78BFA", "badge": "🟡"},
     "KIRC": {"full": "Kidney Renal Clear Cell Carcinoma",  "organ": "Kidney",   "hex": "#10B981", "badge": "🟢"},
     "LUAD": {"full": "Lung Adenocarcinoma",                "organ": "Lung",     "hex": "#6366F1", "badge": "🔵"},
@@ -780,6 +781,342 @@ div[data-testid="stImage"] img {
         padding: 0.15rem 0.45rem !important;
     }
 }
+
+/* ═══════════════════════════════════════════════════
+   BLACK / BLUE FLAT-CARD VISUAL SYSTEM
+   ═══════════════════════════════════════════════════ */
+:root {
+    --bg-canvas: #050505;
+    --card-bg: #151515;
+    --card-surface: #1B1B1B;
+    --border-card: #303030;
+    --border-highlight: #666666;
+    --accent-purple: #2F80FF;
+    --accent-light: #8CC8FF;
+    --accent-glow: rgba(47, 128, 255, 0.18);
+    --text-pure: #FFFFFF;
+    --text-main: #F5F5F5;
+    --text-muted: #858585;
+    --radius-main: 10px;
+    --radius-sm: 8px;
+}
+
+html, body, [class*="css"], .main, [data-testid="stAppViewContainer"],
+[data-testid="stAppViewBlockContainer"], .block-container {
+    background: #050505 !important;
+    color: var(--text-main) !important;
+}
+
+.main .block-container {
+    padding-top: 0.7rem !important;
+    padding-bottom: 2.5rem !important;
+    max-width: 1400px !important;
+}
+
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFileUploader"]) {
+    background: #101010 !important;
+    border: 1px solid #383838 !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+}
+
+.nav-brand-title {
+    color: #FFFFFF !important;
+}
+
+.nav-brand-dot {
+    background: #3B9CFF !important;
+    box-shadow: 0 0 10px rgba(59, 156, 255, 0.55) !important;
+}
+
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFileUploader"]) section[data-testid="stFileUploaderDropzone"] {
+    background: #171717 !important;
+    border: 1px dashed #4A4A4A !important;
+    border-radius: 8px !important;
+}
+
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFileUploader"]) section[data-testid="stFileUploaderDropzone"]:hover {
+    background: #202020 !important;
+    border-color: #2F80FF !important;
+}
+
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFileUploader"]) section[data-testid="stFileUploaderDropzone"] button {
+    background: #FFFFFF !important;
+    color: #111111 !important;
+    border: 1px solid #FFFFFF !important;
+    border-radius: 8px !important;
+}
+
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stImage"]) > div[data-testid="stColumn"],
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stImage"]) > div[data-testid="stVerticalBlock"],
+div[data-testid="stVerticalBlock"]:has(div[data-testid="stImage"]):not([data-testid="stHorizontalBlock"] *),
+.in-card, .in-stat-card, div[data-testid="stExpander"] {
+    background: #151515 !important;
+    border: 1px solid #303030 !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+}
+
+.in-stat-card {
+    padding: 1.25rem 1.45rem !important;
+}
+
+.in-card:hover, .in-stat-card:hover {
+    border-color: #5B5B5B !important;
+    box-shadow: none !important;
+    transform: translateY(-1px) !important;
+}
+
+.in-card-title, .in-stat-value {
+    color: #FFFFFF !important;
+}
+
+.in-card-sub {
+    color: #858585 !important;
+}
+
+.in-badge-pill {
+    border-radius: 8px !important;
+}
+
+.badge-purple {
+    background: rgba(47, 128, 255, 0.12) !important;
+    color: #8CC8FF !important;
+    border: 1px solid rgba(47, 128, 255, 0.48) !important;
+}
+
+.match-notice {
+    margin-bottom: 0.6rem;
+    color: #8CC8FF !important;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.badge-green {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #E5E5E5 !important;
+    border-color: #555555 !important;
+}
+
+.badge-red {
+    background: rgba(47, 128, 255, 0.12) !important;
+    color: #8CC8FF !important;
+    border-color: rgba(47, 128, 255, 0.48) !important;
+}
+
+div.stButton > button {
+    border-radius: 8px !important;
+    box-shadow: none !important;
+}
+
+div.stButton > button[kind="primary"] {
+    background: linear-gradient(100deg, #2F80FF 0%, #1769D1 56%, #FFFFFF 145%) !important;
+    color: #FFFFFF !important;
+    border: 1px solid #2F80FF !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+}
+
+div.stButton > button[kind="primary"]:hover {
+    background: linear-gradient(100deg, #55ADFF 0%, #2F80FF 56%, #FFFFFF 145%) !important;
+    border-color: #8CC8FF !important;
+    box-shadow: none !important;
+    transform: translateY(-1px) !important;
+}
+
+div.stButton > button:not([kind="primary"]) {
+    background: transparent !important;
+    color: #FFFFFF !important;
+    border: 1px solid #666666 !important;
+    border-radius: 8px !important;
+}
+
+div.stButton > button:not([kind="primary"]):hover {
+    background: #222222 !important;
+    color: #FFFFFF !important;
+    border-color: #FFFFFF !important;
+    box-shadow: none !important;
+}
+
+div[data-testid="stTextInput"] input {
+    background: #151515 !important;
+    border: 1px solid #3A3A3A !important;
+    border-radius: 8px !important;
+    color: #FFFFFF !important;
+}
+
+div[data-testid="stTextInput"] input:focus {
+    border-color: #55ADFF !important;
+    box-shadow: 0 0 0 2px rgba(85, 173, 255, 0.22), 0 0 14px rgba(47, 128, 255, 0.18) !important;
+}
+
+div[data-testid="stDataFrame"], div[data-testid="stExpander"] {
+    border-radius: 10px !important;
+    border-color: #303030 !important;
+}
+
+.hero-title {
+    background: linear-gradient(100deg, #FFFFFF 0%, #A8D9FF 52%, #2F80FF 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Glassmorphism card finish */
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stImage"]) > div[data-testid="stColumn"],
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stImage"]) > div[data-testid="stVerticalBlock"],
+div[data-testid="stVerticalBlock"]:has(div[data-testid="stImage"]):not([data-testid="stHorizontalBlock"] *),
+.in-card, .in-stat-card, div[data-testid="stExpander"] {
+    background: linear-gradient(
+        135deg,
+        rgba(52, 42, 64, 0.62),
+        rgba(20, 20, 24, 0.72)
+    ) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 10px 28px rgba(0, 0, 0, 0.28) !important;
+    backdrop-filter: blur(18px) saturate(125%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(125%) !important;
+}
+
+.in-card:hover, .in-stat-card:hover {
+    border-color: rgba(140, 200, 255, 0.45) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 12px 30px rgba(0, 0, 0, 0.32) !important;
+}
+
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFileUploader"]) {
+    background: rgba(18, 18, 20, 0.7) !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 10px 28px rgba(0, 0, 0, 0.28) !important;
+    backdrop-filter: blur(18px) saturate(125%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(125%) !important;
+}
+
+div[data-testid="stTextInput"] input {
+    background: rgba(28, 24, 32, 0.68) !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+}
+
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFileUploader"]) div.stButton > button[kind="primary"] {
+    background: rgba(47, 128, 255, 0.18) !important;
+    border-color: rgba(140, 200, 255, 0.35) !important;
+    color: #B9DFFF !important;
+    box-shadow: none !important;
+}
+
+div[data-testid="stHorizontalBlock"]:has(div[data-testid="stFileUploader"]) div.stButton > button[kind="primary"]:hover {
+    background: rgba(47, 128, 255, 0.28) !important;
+    border-color: rgba(140, 200, 255, 0.55) !important;
+    box-shadow: none !important;
+}
+
+/* ═══════════════════════════════════════════════════
+   DNA GENOMIC ANALYSIS LOADER (3D Double Helix)
+   ═══════════════════════════════════════════════════ */
+.dna-loader-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100% !important;
+    min-height: min(68vh, 620px);
+    margin: 0 !important;
+    text-align: center;
+}
+
+.dna-loader {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 86px;
+    height: 112px;
+}
+
+.dna-loader-helix {
+    position: relative;
+    width: 58px;
+    height: 86px;
+    perspective: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.dna-bar {
+    position: relative;
+    width: 100%;
+    height: 3px;
+    transform-style: preserve-3d;
+    animation: dna-rotate-3d 1.6s ease-in-out infinite;
+    animation-delay: calc(var(--i) * -0.2s);
+}
+
+.dna-bar::before,
+.dna-bar::after {
+    content: "";
+    position: absolute;
+    top: -4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.dna-bar::before {
+    left: 0;
+    background: #2F80FF;
+    box-shadow: 0 0 4px rgba(47, 128, 255, 0.48);
+}
+
+.dna-bar::after {
+    right: 0;
+    background: #A78BFA;
+    box-shadow: 0 0 4px rgba(167, 139, 250, 0.48);
+}
+
+.dna-rung {
+    position: absolute;
+    top: 0;
+    left: 5px;
+    right: 5px;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(47, 128, 255, 0.55), rgba(167, 139, 250, 0.55));
+    border-radius: 2px;
+}
+
+@keyframes dna-rotate-3d {
+    0% {
+        transform: rotateY(0deg);
+    }
+    50% {
+        transform: rotateY(180deg);
+    }
+    100% {
+        transform: rotateY(360deg);
+    }
+}
+
+.dna-loader-copy {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.7rem;
+}
+
+.dna-loader-copy::after {
+    content: "Initializing...";
+    color: #8CC8FF;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -795,24 +1132,6 @@ def load_artifacts():
         return joblib.load("model.pkl"), joblib.load("encoder.pkl"), joblib.load("selector.pkl"), None
     except Exception as exc:
         return None, None, None, str(exc)
-
-@st.cache_data(show_spinner=False)
-def load_demo_csv(filename="sample_multi_patient.csv"):
-    candidates = [
-        filename,
-        os.path.join("sampledata", filename),
-        os.path.join("sampledata", "sample_multi_patient.csv"),
-        "sample_multi_patient.csv",
-        "sample_data_1.csv",
-        os.path.join("sampledata", "sample_data_1.csv"),
-    ]
-    target = next((p for p in candidates if os.path.exists(p)), None)
-    if not target:
-        return None, f"`{filename}` not found."
-    try:
-        return pd.read_csv(target), None
-    except Exception as exc:
-        return None, str(exc)
 
 def parse_uploaded_dataset(df_raw: pd.DataFrame):
     """
@@ -857,6 +1176,32 @@ def parse_uploaded_dataset(df_raw: pd.DataFrame):
     features_df = df_raw.drop(columns=list(cols_to_drop)).copy()
     features_df = features_df.apply(pd.to_numeric, errors="coerce").fillna(0.0)
     return records, features_df
+
+@contextmanager
+def dna_analysis_loader(message: str, min_duration: float = 3.0):
+    placeholder = st.empty()
+    rungs_html = "".join([
+        f'<div class="dna-bar" style="--i: {i};"><span class="dna-rung"></span></div>'
+        for i in range(8)
+    ])
+    placeholder.markdown(f"""
+    <div class="dna-loader-wrapper">
+        <div class="dna-loader" role="status" aria-live="polite">
+            <div class="dna-loader-helix" aria-hidden="true">
+                {rungs_html}
+            </div>
+        </div>
+        <div class="dna-loader-copy"></div>
+    </div>
+    """, unsafe_allow_html=True)
+    t0 = time.time()
+    try:
+        yield
+    finally:
+        remaining = min_duration - (time.time() - t0)
+        if remaining > 0:
+            time.sleep(remaining)
+        placeholder.empty()
 
 def compute_patient_inference(patient_idx: int, features_df: pd.DataFrame, model, encoder, selector):
     """
@@ -931,85 +1276,80 @@ def render_patient_view(patient_info, result, is_analyzed, total_patients, encod
     Renders the complete SaaS diagnostic dashboard for a given patient.
     """
     # 1. Patient Header Banner Card
-    badge_style = "badge-green" if is_analyzed else "badge-purple"
-    status_label = "● Analyzed" if is_analyzed else "● Standby"
+    if not is_analyzed and patient_info.get("name") in ["No Name", None]:
+        patient_title = "No Name"
+        patient_id_text = "Patient ID: NULL"
+        patient_sub_text = "Standby &middot; Upload patient RNA-Seq CSV to initialize diagnostics"
+    else:
+        patient_title = patient_info['name']
+        patient_id_text = f"Patient ID: {patient_info['id']}"
+        patient_sub_text = f"Patient #{patient_info['index']+1} of {total_patients} &middot; RNA-Seq Transcriptome"
 
-    st.markdown(f"""
-    <div style="background:#12131A;border:1px solid #212230;border-left:4px solid #8B5CF6;border-radius:14px;padding:0.75rem 1.25rem;margin-top:0.4rem;margin-bottom:1.1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
-        <div style="display:flex;align-items:center;gap:0.85rem;">
-            <div style="width:38px;height:38px;border-radius:10px;background:rgba(139,92,246,0.18);border:1px solid rgba(139,92,246,0.3);display:flex;align-items:center;justify-content:center;font-size:1.15rem;color:#C084FC;">
-                👤
-            </div>
-            <div>
-                <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
-                    <span style="font-size:1.05rem;font-weight:800;color:#FFFFFF;">{patient_info['name']}</span>
-                    <span style="background:rgba(139,92,246,0.15);color:#C084FC;font-size:0.75rem;font-weight:700;padding:0.18rem 0.55rem;border-radius:9999px;border:1px solid rgba(139,92,246,0.3);font-family:monospace;">
-                        ID: {patient_info['id']}
-                    </span>
-                </div>
-                <div style="font-size:0.75rem;color:#8B8FA3;margin-top:0.15rem;">
-                    Patient #{patient_info['index']+1} of {total_patients} &middot; Illumina HiSeq RNA-Seq Transcriptome
-                </div>
-            </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:0.5rem;">
-            <span class="in-badge-pill {badge_style}">{status_label}</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div style="background:#12131A;border:1px solid #212230;border-left:4px solid #8B5CF6;border-radius:14px;padding:0.75rem 1.25rem;margin-top:0.4rem;margin-bottom:1.1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+<div style="display:flex;align-items:center;gap:0.85rem;">
+<div style="width:38px;height:38px;border-radius:10px;background:rgba(139,92,246,0.18);border:1px solid rgba(139,92,246,0.3);display:flex;align-items:center;justify-content:center;font-size:1.15rem;color:#C084FC;">
+👤
+</div>
+<div>
+<div style="font-size:1.05rem;font-weight:800;color:#FFFFFF;">
+{patient_title}
+</div>
+<div style="font-size:0.72rem;color:#858585;margin-top:0.15rem;font-family:monospace;">
+{patient_id_text}
+</div>
+<div style="font-size:0.75rem;color:#8B8FA3;margin-top:0.15rem;">
+{patient_sub_text}
+</div>
+</div>
+</div>
+</div>""", unsafe_allow_html=True)
 
     # 2. 3 Top Stat Cards
-    conf_val = f"{result['confidence']:.1f}%" if is_analyzed else "0.0%"
-    pred_sub = result['pred_code'] if is_analyzed else "STANDBY"
     biomarker_cnt = "500" if is_analyzed else "0"
-    meta_data = result['meta'] if is_analyzed else {"full": "Awaiting patient inference", "organ": "—", "hex": "#7A7D93"}
+    biomarker_sub = "97.6% Transcriptome reduction" if is_analyzed else "Standby &middot; Top 500 gene selection"
+    biomarker_badge = "Top K=500" if is_analyzed else "0%"
+
+    meta_data = result['meta'] if is_analyzed else {"full": "Awaiting patient inference", "organ": "—", "hex": "#8B8FA3"}
+    subtype_badge = meta_data["organ"] if is_analyzed else "0%"
+    subtype_value = result['pred_code'] if is_analyzed else "NULL"
+    subtype_description = meta_data["full"] if is_analyzed else "Awaiting patient inference"
+    subtype_color = meta_data['hex'] if is_analyzed else "#8B8FA3"
+    badge_style_sub = "badge-green" if is_analyzed else "badge-purple"
+
+    conf_val = f"{result['confidence']:.1f}%" if is_analyzed else "0.0%"
+    conf_sub = "High Diagnostic Certainty" if is_analyzed else "Engine awaiting run trigger"
+    conf_badge = "badge-green" if (is_analyzed and result['confidence'] > 90) else "badge-purple"
 
     s1, s2, s3 = st.columns(3)
     with s1:
-        st.markdown(f"""
-        <div class="in-stat-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-                <div style="font-size:0.8rem;font-weight:700;color:#8B8FA3;display:flex;align-items:center;gap:0.4rem;">
-                    Biomarkers Analyzed
-                </div>
-                <span class="in-badge-pill badge-purple">Top K=500</span>
-            </div>
-            <div class="in-stat-value">{biomarker_cnt}</div>
-            <div style="font-size:0.75rem;color:#71758B;margin-top:0.4rem;">97.6% Transcriptome reduction</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div class="in-stat-card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+<div style="font-size:0.8rem;font-weight:700;color:#8B8FA3;">Biomarkers Analyzed</div>
+<span class="in-badge-pill {badge_style_sub}">{biomarker_badge}</span>
+</div>
+<div class="in-stat-value">{biomarker_cnt}</div>
+<div style="font-size:0.75rem;color:#71758B;margin-top:0.4rem;">{biomarker_sub}</div>
+</div>""", unsafe_allow_html=True)
 
     with s2:
-        badge_style_sub = "badge-green" if is_analyzed else "badge-purple"
-        delta_text = meta_data['organ'] if is_analyzed else "0%"
-        st.markdown(f"""
-        <div class="in-stat-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-                <div style="font-size:0.8rem;font-weight:700;color:#8B8FA3;display:flex;align-items:center;gap:0.4rem;">
-                    Predicted Subtype
-                </div>
-                <span class="in-badge-pill {badge_style_sub}">{delta_text}</span>
-            </div>
-            <div class="in-stat-value" style="color:{meta_data['hex']};">{pred_sub}</div>
-            <div style="font-size:0.75rem;color:#71758B;margin-top:0.4rem;">{meta_data['full']}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div class="in-stat-card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+<div style="font-size:0.8rem;font-weight:700;color:#8B8FA3;">Predicted Subtype</div>
+<span class="in-badge-pill {badge_style_sub}">{subtype_badge}</span>
+</div>
+<div class="in-stat-value" style="color:{subtype_color};">{subtype_value}</div>
+<div style="font-size:0.75rem;color:#71758B;margin-top:0.4rem;">{subtype_description}</div>
+</div>""", unsafe_allow_html=True)
 
     with s3:
-        conf_badge = "badge-green" if (is_analyzed and result['confidence'] > 90) else "badge-purple"
-        conf_sub = "High Diagnostic Certainty" if is_analyzed else "Engine awaiting run trigger"
-        st.markdown(f"""
-        <div class="in-stat-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-                <div style="font-size:0.8rem;font-weight:700;color:#8B8FA3;display:flex;align-items:center;gap:0.4rem;">
-                    Model Confidence
-                </div>
-                <span class="in-badge-pill {conf_badge}">Posterior</span>
-            </div>
-            <div class="in-stat-value">{conf_val}</div>
-            <div style="font-size:0.75rem;color:#71758B;margin-top:0.4rem;">{conf_sub}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div class="in-stat-card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+<div style="font-size:0.8rem;font-weight:700;color:#8B8FA3;">Model Confidence</div>
+<span class="in-badge-pill {conf_badge}">Posterior</span>
+</div>
+<div class="in-stat-value">{conf_val}</div>
+<div style="font-size:0.75rem;color:#71758B;margin-top:0.4rem;">{conf_sub}</div>
+</div>""", unsafe_allow_html=True)
 
     st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
@@ -1044,7 +1384,7 @@ def render_patient_view(patient_info, result, is_analyzed, total_patients, encod
                 <div class="in-card-title">Biomarker Expression Loci Waveform</div>
                 <div class="in-card-sub">Top 30 discriminant expression peaks across the transcriptome</div>
             </div>
-            <span class="in-badge-pill badge-purple">Illumina HiSeq</span>
+            <span class="in-badge-pill badge-purple">RNA-Seq</span>
         </div>
         """, unsafe_allow_html=True)
         st.pyplot(fig_wave, use_container_width=True)
@@ -1152,6 +1492,39 @@ def render_patient_view(patient_info, result, is_analyzed, total_patients, encod
 
 model, encoder, selector, art_err = load_artifacts()
 
+# Initialize session state for patient records
+if "patient_records" not in st.session_state:
+    st.session_state["patient_records"] = []
+if "features_df" not in st.session_state:
+    st.session_state["features_df"] = None
+if "patient_source" not in st.session_state:
+    st.session_state["patient_source"] = ""
+if "is_analyzed" not in st.session_state:
+    st.session_state["is_analyzed"] = False
+if "patient_results_cache" not in st.session_state:
+    st.session_state["patient_results_cache"] = {}
+
+# Initial startup splash loader
+if "app_loaded" not in st.session_state:
+    st.session_state["app_loaded"] = True
+    splash = st.empty()
+    rungs_html = "".join([
+        f'<div class="dna-bar" style="--i: {i};"><span class="dna-rung"></span></div>'
+        for i in range(8)
+    ])
+    splash.markdown(f"""
+    <div class="dna-loader-wrapper" style="margin: 3rem 0 2rem 0;">
+        <div class="dna-loader" role="status">
+            <div class="dna-loader-helix">
+                {rungs_html}
+            </div>
+        </div>
+        <div class="dna-loader-copy"></div>
+    </div>
+    """, unsafe_allow_html=True)
+    time.sleep(2.0)
+    splash.empty()
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. TOP NAVBAR
 # Left: Brand Name
@@ -1177,60 +1550,33 @@ with nav_mid:
     )
 
 with nav_right:
-    col_status, col_demo_btn = st.columns([1.5, 1], vertical_alignment="center")
-    with col_demo_btn:
-        load_demo = st.button("Demo Sample", help="Load pre-saved benchmark patient cohort")
+    run_clicked = st.button("Initialize AI Analysis", type="primary", use_container_width=True)
 
-    with col_status:
-        if uploaded_file is not None:
-            # Only re-parse when file actually changes (name + size fingerprint)
-            file_fingerprint = f"{uploaded_file.name}::{uploaded_file.size}"
-            if st.session_state.get("loaded_file_fingerprint") != file_fingerprint:
-                try:
-                    raw = pd.read_csv(uploaded_file)
-                    records, features_df = parse_uploaded_dataset(raw)
-                    patient_source = f"File: {uploaded_file.name[:14]}... ({len(records)} Patients)"
-                    st.session_state["patient_records"] = records
-                    st.session_state["features_df"] = features_df
-                    st.session_state["patient_source"] = patient_source
-                    st.session_state["is_analyzed"] = False
-                    st.session_state["patient_results_cache"] = {}
-                    st.session_state["search_query"] = ""
-                    st.session_state["loaded_file_fingerprint"] = file_fingerprint
-                except Exception as e:
-                    st.error(f"Error parsing file: {e}")
-        elif load_demo:
-            current_cycle = st.session_state.get("demo_cycle_idx", 0)
-            next_cycle = (current_cycle % 20) + 1
-            filename = f"sample_data_{next_cycle}.csv"
-            demo, demo_err = load_demo_csv(filename)
-            if not demo_err:
-                records, features_df = parse_uploaded_dataset(demo)
-                patient_source = f"Demo #{next_cycle} ({len(records)} Patients)"
-                st.session_state["patient_records"] = records
-                st.session_state["features_df"] = features_df
-                st.session_state["patient_source"] = patient_source
-                st.session_state["demo_cycle_idx"] = next_cycle
-                st.session_state["is_analyzed"] = False
-                st.session_state["patient_results_cache"] = {}
-                st.session_state["search_query"] = ""
+if uploaded_file is None and st.session_state.get("patient_source", "").startswith("File:"):
+    st.session_state["patient_records"] = []
+    st.session_state["features_df"] = None
+    st.session_state["patient_source"] = ""
+    st.session_state["is_analyzed"] = False
+    st.session_state["patient_results_cache"] = {}
+    st.session_state["loaded_file_fingerprint"] = None
 
-        loaded_records = st.session_state.get("patient_records", [])
-        patient_src_label = st.session_state.get("patient_source", "")
-
-        if loaded_records:
-            st.markdown(f"""
-            <div style="display:flex;align-items:center;justify-content:flex-end;gap:0.5rem;">
-                <span class="in-badge-pill badge-green">✓ Ready</span>
-                <span style="font-size:0.75rem;color:#A78BFA;font-weight:600;">{patient_src_label}</span>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div style="display:flex;align-items:center;justify-content:flex-end;">
-                <span class="in-badge-pill badge-purple">● Standby (No File)</span>
-            </div>
-            """, unsafe_allow_html=True)
+if uploaded_file is not None:
+    # Only re-parse when file actually changes (name + size fingerprint)
+    file_fingerprint = f"{uploaded_file.name}::{uploaded_file.size}"
+    if st.session_state.get("loaded_file_fingerprint") != file_fingerprint:
+        try:
+            raw = pd.read_csv(uploaded_file)
+            records, features_df = parse_uploaded_dataset(raw)
+            patient_source = f"File: {uploaded_file.name[:14]}... ({len(records)} Patients)"
+            st.session_state["patient_records"] = records
+            st.session_state["features_df"] = features_df
+            st.session_state["patient_source"] = patient_source
+            st.session_state["is_analyzed"] = False
+            st.session_state["patient_results_cache"] = {}
+            st.session_state["search_query"] = ""
+            st.session_state["loaded_file_fingerprint"] = file_fingerprint
+        except Exception as e:
+            st.error(f"Error parsing file: {e}")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1.5. SEARCH BAR (Directly Under Top Navbar)
@@ -1256,7 +1602,7 @@ sc_input, sc_btn, sc_reset = st.columns([5.2, 1.2, 1.2], vertical_alignment="cen
 with sc_input:
     st.text_input(
         "Search Patient",
-        placeholder="🔍 Search patient by Name (e.g., Sophia Martinez) or Patient ID (e.g., PID-TCGA-101)...",
+        placeholder="Search patient by Name (e.g., Sophia Martinez) or Patient ID (e.g., PID-TCGA-101)...",
         label_visibility="collapsed",
         key="patient_search_input",
         on_change=on_search_submit
@@ -1282,24 +1628,23 @@ with sub_left:
             RNA-Seq Cancer Subtype Predictor
         </div>
         <div class="hero-sub">
-            Multi-class histological classification via high-throughput Illumina HiSeq transcriptomics.
+            Multi-class histological classification via high-throughput transcriptomics.
             Powered by gradient-boosted tree ensembles and game-theoretic SHAP explainability.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
 with sub_right:
-    st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
-    run_clicked = st.button("Initialize AI Analysis", type="primary", use_container_width=True)
+    st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
 
 if run_clicked:
     if not loaded_records or features_df is None:
-        st.warning("⚠️ Please upload a patient CSV or click 'Demo Sample' in the top navbar first!")
+        st.warning("⚠️ No RNA-Seq dataset loaded yet. Please upload a patient CSV.")
     elif art_err:
         st.error(f"Setup Required: {art_err}")
-    else:
+    elif features_df is not None:
         # Run inference INLINE for first patient — no st.rerun() to avoid state race
-        with st.spinner("🔬 Analyzing Patient #1 · Applying SelectKBest → XGBoost → SHAP..."):
+        with dna_analysis_loader("Applying SelectKBest → XGBoost → SHAP to Patient #1...", min_duration=3.0):
             try:
                 compute_patient_inference(0, features_df, model, encoder, selector)
                 st.session_state["is_analyzed"] = True
@@ -1317,7 +1662,7 @@ active_query = st.session_state.get("search_query", "").strip()
 
 if not loaded_records or features_df is None:
     # Standby state with placeholder patient
-    placeholder_patient = {"index": 0, "id": "No ID", "name": "No Name"}
+    placeholder_patient = {"index": None, "id": None, "name": None}
     standby_res = get_standby_result()
     render_patient_view(placeholder_patient, standby_res, is_analyzed=False, total_patients=1, encoder=encoder)
 else:
@@ -1357,11 +1702,9 @@ else:
                     display_patients = [loaded_records[0]]
                     match_notice = f"Fallback: Displaying First Patient (#1 of {total_loaded})"
 
-    # Display match notice badge
+    # Display match notice
     st.markdown(f"""
-    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.6rem;">
-        <span class="in-badge-pill badge-purple">{match_notice}</span>
-    </div>
+    <div class="match-notice">{match_notice}</div>
     """, unsafe_allow_html=True)
 
     # Render each matched patient (stacked vertically if multiple)
@@ -1373,7 +1716,7 @@ else:
             patient_cache = st.session_state.get("patient_results_cache", {})
             if p["index"] not in patient_cache:
                 # Not yet computed — show inline spinner and compute now
-                with st.spinner(f"🔬 Analyzing {p['name']} ({p['id']}) · Running RNA-Seq pipeline..."):
+                with dna_analysis_loader(f"Running the RNA-Seq pipeline for {p['name']} ({p['id']})..."):
                     try:
                         res = compute_patient_inference(p["index"], features_df, model, encoder, selector)
                     except Exception as e:

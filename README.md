@@ -173,13 +173,16 @@ cd "Cancer Subtype Prediction via Gene Expression (RNA-Seq)"
 ### 2. Set Up a Virtual Environment (Recommended)
 ```bash
 # Windows (PowerShell)
-python -m venv venv
-.\venv\Scripts\Activate.ps1
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 
 # macOS / Linux
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 ```
+
+The `.venv` directory is intentionally kept on your local machine but ignored by
+Git, so it will not be uploaded to GitHub.
 
 ### 3. Install Dependencies
 ```bash
@@ -208,7 +211,7 @@ The dashboard is structured into four functional areas:
 1. **Top Navbar**:
    - **Brand Indicator**: Pulsing violet indicator with application title.
    - **Horizontal File Uploader**: Drag-and-drop support for patient CSV files with compact sideways chip display.
-   - **Status Badge & Demo Button**: Live file readiness status badge alongside a cycling demo button to test samples without manual uploads.
+   - **File Status**: Live file readiness status for the uploaded patient dataset.
 2. **Sub-Navbar Hero**:
    - Clinical subtitle with dataset attribution and the prominent **Initialize AI Analysis** CTA button.
 3. **Stat Cards (Top Row)**:
@@ -226,4 +229,3 @@ The dashboard is structured into four functional areas:
 ## Medical Disclaimer
 
 This software is developed strictly for **computational biology research, bioinformatics benchmarking, and educational purposes**. It is not a certified diagnostic medical device and should not be used as the sole basis for clinical diagnosis, patient staging, or surgical decisions without independent pathology confirmation and oncologist review.
-
