@@ -43,7 +43,7 @@ In classical oncology, cancer is diagnosed primarily through tissue biopsy and h
 | **Prevents Misclassification** | Multi-class gradient-boosted decision trees deliver >98% generalization accuracy across all 5 cancer cohorts. |
 | **Personalized Targeted Therapy** | Identifies specific overexpressed driver genes (e.g., hormone receptors, tyrosine kinases) to help guide targeted inhibitor selection over generic toxic chemotherapy. |
 | **Transparent Explainability (XAI)** | Instead of a black-box probability score, clinicians inspect a SHAP Beeswarm Plot highlighting individual positive and negative genomic drivers. |
-| **Rapid Second Opinion** | Delivers instantaneous inference from standard Illumina HiSeq CSV outputs, reducing diagnostic turnaround time from days to seconds. |
+| **Rapid Second Opinion** | Delivers instantaneous inference from standard RNA-Seq CSV outputs, reducing diagnostic turnaround time from days to seconds. |
 
 ---
 
@@ -51,7 +51,7 @@ In classical oncology, cancer is diagnosed primarily through tissue biopsy and h
 
 ```
 ┌─────────────────────────────────┐
-│ Patient RNA-Seq CSV (20,531)    │  Raw Illumina HiSeq log2-normalized expression counts
+│ Patient RNA-Seq CSV (20,531)    │  Raw log2-normalized RNA-Seq expression counts
 └────────────────┬────────────────┘
                  │
                  ▼
@@ -107,7 +107,7 @@ Cancer Subtype Prediction via Gene Expression (RNA-Seq)/
 
 ## Sample Patient Data (`sampledata/`)
 
-The `sampledata/` directory contains **20 pre-extracted, real patient samples** directly from the official TCGA Pan-Cancer Illumina HiSeq cohort. Each file contains all 20,531 continuous RNA-Seq transcriptomic expression levels for a unique real patient, with no synthetic/fake data:
+The `sampledata/` directory contains **20 pre-extracted, real patient samples** directly from the official TCGA Pan-Cancer cohort. Each file contains all 20,531 continuous RNA-Seq transcriptomic expression levels for a unique real patient, with no synthetic/fake data:
 
 | File | Sample ID | Ground Truth Diagnosis | Target Organ | Model Confidence |
 |---|---|---|---|---|

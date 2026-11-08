@@ -35,3 +35,8 @@ data.csv
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
+
+# Testing & logs
+.pytest_cache/
+*.log
