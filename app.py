@@ -905,12 +905,12 @@ div[data-testid="stVerticalBlock"]:has(div[data-testid="stImage"]):not([data-tes
     border-color: rgba(47, 128, 255, 0.48) !important;
 }
 
-div.stButton > button {
+div.stButton > button, div.stDownloadButton > button {
     border-radius: 8px !important;
     box-shadow: none !important;
 }
 
-div.stButton > button[kind="primary"] {
+div.stButton > button[kind="primary"], div.stDownloadButton > button[kind="primary"] {
     background: linear-gradient(100deg, #2F80FF 0%, #1769D1 56%, #FFFFFF 145%) !important;
     color: #FFFFFF !important;
     border: 1px solid #2F80FF !important;
@@ -918,25 +918,25 @@ div.stButton > button[kind="primary"] {
     box-shadow: none !important;
 }
 
-div.stButton > button[kind="primary"]:hover {
+div.stButton > button[kind="primary"]:hover, div.stDownloadButton > button[kind="primary"]:hover {
     background: linear-gradient(100deg, #55ADFF 0%, #2F80FF 56%, #FFFFFF 145%) !important;
     border-color: #8CC8FF !important;
     box-shadow: none !important;
     transform: translateY(-1px) !important;
 }
 
-div.stButton > button:not([kind="primary"]) {
-    background: transparent !important;
+div.stButton > button:not([kind="primary"]), div.stDownloadButton > button:not([kind="primary"]) {
+    background: #151515 !important;
     color: #FFFFFF !important;
-    border: 1px solid #666666 !important;
+    border: 1px solid #383838 !important;
     border-radius: 8px !important;
 }
 
-div.stButton > button:not([kind="primary"]):hover {
+div.stButton > button:not([kind="primary"]):hover, div.stDownloadButton > button:not([kind="primary"]):hover {
     background: #222222 !important;
     color: #FFFFFF !important;
-    border-color: #FFFFFF !important;
-    box-shadow: none !important;
+    border-color: #2F80FF !important;
+    box-shadow: 0 0 10px rgba(47, 128, 255, 0.25) !important;
 }
 
 div[data-testid="stTextInput"] input {
@@ -1524,6 +1524,48 @@ if "app_loaded" not in st.session_state:
     """, unsafe_allow_html=True)
     time.sleep(2.0)
     splash.empty()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 0. TOP DOWNLOAD HEADER (Download for Windows & Download for Android)
+# ─────────────────────────────────────────────────────────────────────────────
+top_dl_left, top_dl_mid, top_dl_right = st.columns([1.6, 2.2, 1.6], vertical_alignment="center")
+
+with top_dl_left:
+    exe_path = "Oncology_AI.exe"
+    exe_bytes = b""
+    if os.path.exists(exe_path):
+        with open(exe_path, "rb") as f:
+            exe_bytes = f.read()
+    st.download_button(
+        label="💻 Download for Windows",
+        data=exe_bytes,
+        file_name="Oncology_AI.exe",
+        mime="application/vnd.microsoft.portable-executable",
+        use_container_width=True,
+        help="Download standalone Windows desktop executable to run in your system"
+    )
+
+with top_dl_mid:
+    st.markdown("""<div style="text-align:center;font-size:0.75rem;color:#71758B;letter-spacing:0.5px;">
+CROSS-PLATFORM SUITE &middot; WINDOWS & ANDROID
+</div>""", unsafe_allow_html=True)
+
+with top_dl_right:
+    apk_path = "Oncology_AI.apk" if os.path.exists("Oncology_AI.apk") else os.path.join("public", "Oncology_AI.apk")
+    apk_bytes = b""
+    if os.path.exists(apk_path):
+        with open(apk_path, "rb") as f:
+            apk_bytes = f.read()
+    st.download_button(
+        label="📱 Download for Android",
+        data=apk_bytes,
+        file_name="Oncology_AI.apk",
+        mime="application/vnd.android.package-archive",
+        use_container_width=True,
+        help="Download Android APK file to run in app format on your mobile phone"
+    )
+
+st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. TOP NAVBAR
