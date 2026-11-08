@@ -103,6 +103,7 @@ In classical oncology, cancer is diagnosed primarily through tissue biopsy and h
 ```
 Cancer Subtype Prediction via Gene Expression (RNA-Seq)/
 │
+├── Oncology_AI.exe             # 1-Click native Windows desktop launcher executable
 ├── app.py                      # Main Streamlit clinical dashboard application
 ├── train_model.py              # Training pipeline (downloads TCGA data, trains XGBoost, saves artifacts)
 ├── requirements.txt            # Python dependencies
