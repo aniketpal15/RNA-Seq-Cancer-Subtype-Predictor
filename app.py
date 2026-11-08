@@ -905,12 +905,12 @@ div[data-testid="stVerticalBlock"]:has(div[data-testid="stImage"]):not([data-tes
     border-color: rgba(47, 128, 255, 0.48) !important;
 }
 
-div.stButton > button, div.stDownloadButton > button {
+div.stButton > button {
     border-radius: 8px !important;
     box-shadow: none !important;
 }
 
-div.stButton > button[kind="primary"], div.stDownloadButton > button[kind="primary"] {
+div.stButton > button[kind="primary"] {
     background: linear-gradient(100deg, #2F80FF 0%, #1769D1 56%, #FFFFFF 145%) !important;
     color: #FFFFFF !important;
     border: 1px solid #2F80FF !important;
@@ -918,25 +918,47 @@ div.stButton > button[kind="primary"], div.stDownloadButton > button[kind="prima
     box-shadow: none !important;
 }
 
-div.stButton > button[kind="primary"]:hover, div.stDownloadButton > button[kind="primary"]:hover {
+div.stButton > button[kind="primary"]:hover {
     background: linear-gradient(100deg, #55ADFF 0%, #2F80FF 56%, #FFFFFF 145%) !important;
     border-color: #8CC8FF !important;
     box-shadow: none !important;
     transform: translateY(-1px) !important;
 }
 
-div.stButton > button:not([kind="primary"]), div.stDownloadButton > button:not([kind="primary"]) {
+div.stButton > button:not([kind="primary"]) {
     background: #151515 !important;
     color: #FFFFFF !important;
     border: 1px solid #383838 !important;
     border-radius: 8px !important;
 }
 
-div.stButton > button:not([kind="primary"]):hover, div.stDownloadButton > button:not([kind="primary"]):hover {
+div.stButton > button:not([kind="primary"]):hover {
     background: #222222 !important;
     color: #FFFFFF !important;
     border-color: #2F80FF !important;
     box-shadow: 0 0 10px rgba(47, 128, 255, 0.25) !important;
+}
+
+/* Highlighted Top Download Buttons */
+div[data-testid="stDownloadButton"] > button {
+    background: linear-gradient(135deg, #1E40AF 0%, #2563EB 50%, #3B82F6 100%) !important;
+    color: #FFFFFF !important;
+    border: 1px solid #60A5FA !important;
+    border-radius: 9999px !important;
+    font-weight: 700 !important;
+    font-size: 0.84rem !important;
+    letter-spacing: 0.3px !important;
+    padding: 0.45rem 1.1rem !important;
+    box-shadow: 0 0 16px rgba(37, 99, 235, 0.42) !important;
+    transition: all 0.22s ease-in-out !important;
+}
+
+div[data-testid="stDownloadButton"] > button:hover {
+    background: linear-gradient(135deg, #2563EB 0%, #3B82F6 50%, #60A5FA 100%) !important;
+    border-color: #93C5FD !important;
+    box-shadow: 0 0 26px rgba(59, 130, 246, 0.75) !important;
+    transform: translateY(-2px) scale(1.02) !important;
+    color: #FFFFFF !important;
 }
 
 div[data-testid="stTextInput"] input {
@@ -1527,6 +1549,7 @@ if "app_loaded" not in st.session_state:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 0. TOP DOWNLOAD HEADER (Download for Windows & Download for Android)
+# Placed above the main dashboard container with highlighted action pills
 # ─────────────────────────────────────────────────────────────────────────────
 top_dl_left, top_dl_mid, top_dl_right = st.columns([1.6, 2.2, 1.6], vertical_alignment="center")
 
@@ -1537,7 +1560,7 @@ with top_dl_left:
         with open(exe_path, "rb") as f:
             exe_bytes = f.read()
     st.download_button(
-        label="💻 Download for Windows",
+        label="📥 Download for Windows",
         data=exe_bytes,
         file_name="Oncology_AI.exe",
         mime="application/vnd.microsoft.portable-executable",
@@ -1546,8 +1569,8 @@ with top_dl_left:
     )
 
 with top_dl_mid:
-    st.markdown("""<div style="text-align:center;font-size:0.75rem;color:#71758B;letter-spacing:0.5px;">
-CROSS-PLATFORM SUITE &middot; WINDOWS & ANDROID
+    st.markdown("""<div style="text-align:center;font-size:0.75rem;font-weight:700;color:#8B8FA3;letter-spacing:0.8px;">
+STANDALONE APP SUITE &middot; WINDOWS &amp; ANDROID
 </div>""", unsafe_allow_html=True)
 
 with top_dl_right:
@@ -1557,7 +1580,7 @@ with top_dl_right:
         with open(apk_path, "rb") as f:
             apk_bytes = f.read()
     st.download_button(
-        label="📱 Download for Android",
+        label="📥 Download for Android",
         data=apk_bytes,
         file_name="Oncology_AI.apk",
         mime="application/vnd.android.package-archive",
@@ -1565,7 +1588,7 @@ with top_dl_right:
         help="Download Android APK file to run in app format on your mobile phone"
     )
 
-st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+st.markdown("""<div style="border-bottom:1px solid #212230;margin-top:0.4rem;margin-bottom:1.1rem;"></div>""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. TOP NAVBAR
